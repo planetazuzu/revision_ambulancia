@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from 'react';
@@ -15,7 +16,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import type { AmpularioMaterial, MaterialRoute, Space } from '@/types';
 import { cn } from '@/lib/utils';
 import { CalendarIcon } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid as isDateValid } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 
 const materialRouteEnum = z.enum(["IV/IM", "Nebulizador", "Oral"]);
@@ -52,7 +54,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
       quantity: 0,
       route: 'Oral',
       expiry_date: null,
-      space_id: spaces[0]?.id || '',
+      space_id: spaces.find(s => s.id === 'space23')?.id || spaces[0]?.id || '',
     },
   });
 
@@ -65,7 +67,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
           unit: material.unit,
           quantity: material.quantity,
           route: material.route,
-          expiry_date: material.expiry_date ? parseISO(material.expiry_date) : null,
+          expiry_date: material.expiry_date && isDateValid(parseISO(material.expiry_date)) ? parseISO(material.expiry_date) : null,
           space_id: material.space_id,
         });
       } else {
@@ -74,9 +76,9 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
             dose: '',
             unit: '',
             quantity: 0,
-            route: 'Oral',
+            route: 'Oral', // Default or consider the first available route if applicable
             expiry_date: null,
-            space_id: spaces.find(s => s.id === 'space23')?.id || spaces[0]?.id || '',
+            space_id: spaces.find(s => s.id === 'space23')?.id || spaces[0]?.id || '', // Ensure a valid default space_id
         });
       }
     }
@@ -107,8 +109,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
         title: material ? "Material Actualizado" : "Material Añadido",
         description: `${data.name} ha sido procesado correctamente.`,
       });
-      onSave();
-      onOpenChange(false);
+      onSave(); // This should re-fetch materials and close the dialog
     } catch (error: any) {
       toast({
         title: "Error",
@@ -214,13 +215,14 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
                           variant={"outline"}
                           className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                         >
-                          {field.value ? format(field.value, "PPP") : <span>Elige una fecha</span>}
+                          {field.value ? format(field.value, "PPP", { locale: es }) : <span>Elige una fecha</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
+                        locale={es}
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
@@ -238,9 +240,11 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Espacio</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={spaces.length === 0}>
                     <FormControl>
-                      <SelectTrigger><SelectValue placeholder="Seleccionar espacio" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder={spaces.length === 0 ? "No hay espacios disponibles" : "Seleccionar espacio"} />
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {spaces.map(s => (
@@ -256,7 +260,9 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
               <DialogClose asChild>
                 <Button type="button" variant="outline">Cancelar</Button>
               </DialogClose>
-              <Button type="submit">{material ? 'Guardar Cambios' : 'Añadir Material'}</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? (material ? 'Guardando...' : 'Añadiendo...') : (material ? 'Guardar Cambios' : 'Añadir Material')}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
@@ -264,3 +270,6 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
     </Dialog>
   );
 }
+
+
+    
