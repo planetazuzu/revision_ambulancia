@@ -1,7 +1,8 @@
+
 "use client";
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { mainNavItems } from '@/config/navigation';
 import { Header } from '@/components/layout/Header';
@@ -27,6 +28,7 @@ import { cn } from '@/lib/utils';
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname(); // Correct pathname string for the layout
   
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   
   const NavContent = () => {
     const { open } = useSidebar(); // Get sidebar state
-    const pathname = useRouter();
+    // Removed: const pathname = useRouter(); - This was causing the issue by shadowing the outer pathname string.
 
     return (
        <>
@@ -65,7 +67,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                     asChild
-                    isActive={pathname.pathname === item.href || (item.href !== '/dashboard' && pathname.pathname.startsWith(item.href))}
+                    // Use the 'pathname' string from the outer scope directly
+                    isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
                     tooltip={open ? undefined : item.label}
                 >
                     <Link href={item.href}>
