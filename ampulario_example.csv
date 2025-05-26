@@ -1,0 +1,9 @@
+name,dose,unit,quantity,route,expiry_date,space_id
+Adrenalina 1mg/1ml,1,mg/ml,10,IV/IM,2025-12-31,space23
+Salbutamol Neb.,5,mg,20,Nebulizador,2024-10-01,space23
+Paracetamol 500mg,500,mg,100,Oral,,space23
+Diazepam 10mg,10,mg,5,IV/IM,2025-06-30,space23
+Amoxicilina 250mg,250,mg,30,Oral,2024-08-15,space23
+Lidocaina 2%,2,%,15,IV/IM,2023-01-10,space23
+Atropina 0.5mg/ml,0.5,mg/ml,8,IV/IM,2024-11-20,space01
+Oxigeno Medicinal,,L,500,Nebulizador,,space23
