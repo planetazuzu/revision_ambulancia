@@ -1,10 +1,11 @@
+
 "use client";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppData } from "@/contexts/AppDataContext";
-import type { Alert as AppAlert } from "@/types"; // Renamed to avoid conflict with Lucide Alert
+import type { Alert as AppAlert, Space } from "@/types"; // Renamed to avoid conflict with Lucide Alert
 import { format, parseISO } from "date-fns";
 import { AlertTriangle, Wrench, ShieldAlert, Info, ArchiveBox, PackageWarning } from "lucide-react";
 import Link from "next/link";
@@ -16,27 +17,40 @@ import { useToast } from "@/hooks/use-toast";
 export default function AlertsPage() {
   const { alerts: contextAlerts, getAmbulanceById } = useAppData();
   const [ampularioAlerts, setAmpularioAlerts] = useState<AppAlert[]>([]);
+  const [spaces, setSpaces] = useState<Space[]>([]);
   const [allAlerts, setAllAlerts] = useState<AppAlert[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingAmpularioAlerts, setIsLoadingAmpularioAlerts] = useState(true);
+  const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchAmpularioAlerts = async () => {
+    const fetchSpacesAndAmpularioAlerts = async () => {
+      setIsLoadingSpaces(true);
+      setIsLoadingAmpularioAlerts(true);
       try {
-        // Assuming default space or all spaces for alerts overview.
-        // Adjust API call if specific space filtering is needed here.
-        const response = await fetch('/api/ampulario/alerts');
-        if (!response.ok) throw new Error('No se pudieron cargar las alertas del Ampulario');
-        const data: AppAlert[] = await response.json();
-        setAmpularioAlerts(data);
+        const spacesResponse = await fetch('/api/spaces');
+        if (!spacesResponse.ok) throw new Error('No se pudieron cargar los espacios');
+        const spacesData: Space[] = await spacesResponse.json();
+        setSpaces(spacesData);
+      } catch (error: any) {
+        toast({ title: "Error", description: `No se pudieron cargar los espacios: ${error.message}`, variant: "destructive" });
+      } finally {
+        setIsLoadingSpaces(false);
+      }
+
+      try {
+        const alertsResponse = await fetch('/api/ampulario/alerts');
+        if (!alertsResponse.ok) throw new Error('No se pudieron cargar las alertas del Ampulario');
+        const alertsData: AppAlert[] = await alertsResponse.json();
+        setAmpularioAlerts(alertsData);
       } catch (error: any) {
         toast({ title: "Error", description: `No se pudieron cargar las alertas del Ampulario: ${error.message}`, variant: "destructive" });
       } finally {
-        setIsLoading(false);
+        setIsLoadingAmpularioAlerts(false);
       }
     };
 
-    fetchAmpularioAlerts();
+    fetchSpacesAndAmpularioAlerts();
   }, [toast]);
 
   useEffect(() => {
@@ -76,6 +90,7 @@ export default function AlertsPage() {
     }
   }
 
+  const isLoading = isLoadingAmpularioAlerts || isLoadingSpaces;
 
   return (
     <div>
@@ -107,7 +122,7 @@ export default function AlertsPage() {
                   <TableRow>
                     <TableHead className="w-[50px]">Tipo</TableHead>
                     <TableHead>Mensaje</TableHead>
-                    <TableHead>Contexto</TableHead> {/* Ambulance or Space */}
+                    <TableHead>Contexto</TableHead> {/* Ambulance or Space Name */}
                     <TableHead>Gravedad</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Acción</TableHead>
@@ -116,9 +131,13 @@ export default function AlertsPage() {
                 <TableBody>
                   {allAlerts.map((alert) => {
                     const ambulance = alert.ambulanceId ? getAmbulanceById(alert.ambulanceId) : null;
-                    const contextName = ambulance ? ambulance.name : (alert.spaceId ? `Espacio ID: ${alert.spaceId}` : 'Sistema');
-                    // TODO: Fetch space name if alert.spaceId exists for better display
-
+                    const space = alert.spaceId ? spaces.find(s => s.id === alert.spaceId) : null;
+                    const contextName = ambulance 
+                                        ? ambulance.name 
+                                        : (space 
+                                            ? space.name 
+                                            : (alert.spaceId ? `Espacio ID: ${alert.spaceId}` : 'Sistema'));
+                    
                     return (
                       <TableRow key={alert.id} className={alert.severity === 'high' ? 'bg-destructive/5 hover:bg-destructive/10' : (alert.severity === 'medium' ? 'bg-orange-500/5 hover:bg-orange-500/10' : '')}>
                         <TableCell>{getIconForAlertType(alert.type, alert.severity)}</TableCell>
