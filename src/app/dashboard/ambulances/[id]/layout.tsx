@@ -4,7 +4,7 @@ import { useParams, useRouter, usePathname } from 'next/navigation';
 import { useAppData } from '@/contexts/AppDataContext';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StepIndicator } from '@/components/shared/StepIndicator';
-import { ambulanceWorkflowSteps } from '@/config/navigation'; // Assuming this is defined elsewhere
+import { ambulanceWorkflowSteps } from '@/config/navigation';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -16,21 +16,20 @@ export default function AmbulanceWorkflowLayout({ children }: { children: ReactN
   const pathname = usePathname();
   const { getAmbulanceById } = useAppData();
   const id = typeof params.id === 'string' ? params.id : '';
-  
+
   const ambulance = getAmbulanceById(id);
 
   if (!ambulance) {
     return (
       <div className="p-6">
         <Button variant="outline" onClick={() => router.push('/dashboard/ambulances')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Ambulances
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Ambulancias
         </Button>
-        <PageHeader title="Ambulance Not Found" description="The requested ambulance could not be found." />
+        <PageHeader title="Ambulancia No Encontrada" description="La ambulancia solicitada no pudo ser encontrada." />
       </div>
     );
   }
-  
-  // Determine current page title from workflow steps
+
   const basePathForSteps = `/dashboard/ambulances/${id}`;
   const currentPathSegment = pathname.substring(basePathForSteps.length);
 
@@ -41,17 +40,17 @@ export default function AmbulanceWorkflowLayout({ children }: { children: ReactN
       isCompleted: (amb: Ambulance) => !!amb[key],
     };
   });
-  
+
   const currentStepConfig = steps.find(step => step.path === pathname);
-  const pageTitle = currentStepConfig ? `${currentStepConfig.name} for ${ambulance.name}` : ambulance.name;
-  const pageDescription = currentStepConfig ? `Complete the ${currentStepConfig.name.toLowerCase()} checklist.` : `Manage ${ambulance.name}.`;
+  const pageTitle = currentStepConfig ? `${currentStepConfig.name} para ${ambulance.name}` : ambulance.name;
+  const pageDescription = currentStepConfig ? `Completa la lista de ${currentStepConfig.name.toLowerCase()}.` : `Gestionar ${ambulance.name}.`;
 
 
   return (
     <div className="p-0 md:p-2 lg:p-4">
       <div className="mb-4">
         <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/ambulances')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Ambulances List
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver al Listado de Ambulancias
         </Button>
       </div>
       <PageHeader title={pageTitle} description={pageDescription} />

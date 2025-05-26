@@ -13,10 +13,6 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { alerts, ambulances, generateAlerts } = useAppData();
 
-  // Ensure alerts are up-to-date when component mounts or dependencies change.
-  // generateAlerts is already called in AppDataContext on data change, so direct call might be redundant
-  // but can be useful if specific re-triggering logic is needed on this page.
-
   const highSeverityAlerts = alerts.filter(alert => alert.severity === 'high');
   const mediumSeverityAlerts = alerts.filter(alert => alert.severity === 'medium');
 
@@ -25,29 +21,31 @@ export default function DashboardPage() {
       case 'review_pending': return <Wrench className="h-5 w-5 text-yellow-500" />;
       case 'expiring_soon': return <ShieldAlert className="h-5 w-5 text-yellow-500" />;
       case 'expired_material': return <AlertTriangle className="h-5 w-5 text-red-500" />;
+      case 'ampulario_expiring_soon': return <ShieldAlert className="h-5 w-5 text-yellow-500" />;
+      case 'ampulario_expired_material': return <AlertTriangle className="h-5 w-5 text-red-500" />;
       default: return <AlertTriangle className="h-5 w-5 text-muted-foreground" />;
     }
   };
-  
+
   const getAmbulanceStatus = (ambulance: typeof ambulances[0]) => {
-    if (!ambulance.mechanicalReviewCompleted) return { text: "Needs Mechanical Review", Icon: Wrench, color: "text-orange-500", path: `/dashboard/ambulances/${ambulance.id}/review` };
-    if (!ambulance.cleaningCompleted) return { text: "Needs Cleaning", Icon: Sparkles, color: "text-blue-500", path: `/dashboard/ambulances/${ambulance.id}/cleaning` };
-    if (!ambulance.inventoryCompleted) return { text: "Needs Inventory Check", Icon: Box, color: "text-purple-500", path: `/dashboard/ambulances/${ambulance.id}/inventory` };
-    return { text: "All Checks Completed", Icon: CheckCircle, color: "text-green-500", path: `/dashboard/ambulances/${ambulance.id}/review`};
+    if (!ambulance.mechanicalReviewCompleted) return { text: "Necesita Revisión Mecánica", Icon: Wrench, color: "text-orange-500", path: `/dashboard/ambulances/${ambulance.id}/review` };
+    if (!ambulance.cleaningCompleted) return { text: "Necesita Limpieza", Icon: Sparkles, color: "text-blue-500", path: `/dashboard/ambulances/${ambulance.id}/cleaning` };
+    if (!ambulance.inventoryCompleted) return { text: "Necesita Control de Inventario", Icon: Box, color: "text-purple-500", path: `/dashboard/ambulances/${ambulance.id}/inventory` };
+    return { text: "Todas las revisiones completas", Icon: CheckCircle, color: "text-green-500", path: `/dashboard/ambulances/${ambulance.id}/review`};
   }
 
   return (
     <div className="container mx-auto py-2">
-      <PageHeader 
-        title={`Welcome, ${user?.name || 'User'}!`}
-        description="Here's an overview of your ambulance fleet status."
+      <PageHeader
+        title={`¡Bienvenido, ${user?.name || 'Usuario'}!`}
+        description="Aquí tienes un resumen del estado de tu flota de ambulancias."
       />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Urgent Alerts</CardTitle>
-            <CardDescription>Immediate attention required for these items.</CardDescription>
+            <CardTitle>Alertas Urgentes</CardTitle>
+            <CardDescription>Estos elementos requieren atención inmediata.</CardDescription>
           </CardHeader>
           <CardContent>
             {highSeverityAlerts.length > 0 ? (
@@ -60,24 +58,29 @@ export default function DashboardPage() {
                       <p className="font-medium text-sm text-destructive">{alert.message}</p>
                       {alert.ambulanceId && (
                          <Button variant="link" size="sm" className="p-0 h-auto text-destructive hover:text-destructive/80" asChild>
-                            <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>View Ambulance</Link>
+                            <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>Ver Ambulancia</Link>
                          </Button>
                       )}
+                       {alert.type.startsWith('ampulario_') && (
+                         <Button variant="link" size="sm" className="p-0 h-auto text-destructive hover:text-destructive/80" asChild>
+                            <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Ampulario</Link>
+                         </Button>
+                       )}
                     </div>
                   </li>
                 ))}
               </ul>
               </ScrollArea>
             ) : (
-              <p className="text-muted-foreground">No high severity alerts. Great job!</p>
+              <p className="text-muted-foreground">No hay alertas de alta gravedad. ¡Buen trabajo!</p>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Pending Actions</CardTitle>
-            <CardDescription>Items that need your attention soon.</CardDescription>
+            <CardTitle>Acciones Pendientes</CardTitle>
+            <CardDescription>Elementos que necesitan tu atención pronto.</CardDescription>
           </CardHeader>
           <CardContent>
              {mediumSeverityAlerts.length > 0 ? (
@@ -87,27 +90,32 @@ export default function DashboardPage() {
                   <li key={alert.id} className="flex items-start gap-3 p-3 bg-accent/10 rounded-md">
                     {getIconForAlertType(alert.type)}
                      <div>
-                      <p className="font-medium text-sm text-accent-foreground-dark">{alert.message}</p> {/* Assuming a dark variant for accent fg */}
+                      <p className="font-medium text-sm text-accent-foreground-dark">{alert.message}</p>
                        {alert.ambulanceId && (
                          <Button variant="link" size="sm" className="p-0 h-auto text-accent-foreground-dark hover:text-accent/80" asChild>
-                            <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>View Ambulance</Link>
+                            <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>Ver Ambulancia</Link>
                          </Button>
                       )}
+                        {alert.type.startsWith('ampulario_') && (
+                         <Button variant="link" size="sm" className="p-0 h-auto text-accent-foreground-dark hover:text-accent/80" asChild>
+                            <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Ampulario</Link>
+                         </Button>
+                       )}
                     </div>
                   </li>
                 ))}
               </ul>
               </ScrollArea>
             ) : (
-              <p className="text-muted-foreground">No medium severity alerts currently.</p>
+              <p className="text-muted-foreground">No hay alertas de gravedad media actualmente.</p>
             )}
           </CardContent>
         </Card>
 
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Ambulance Status Overview</CardTitle>
-            <CardDescription>Quick view of current tasks for each ambulance.</CardDescription>
+            <CardTitle>Resumen del Estado de Ambulancias</CardTitle>
+            <CardDescription>Vista rápida de las tareas actuales para cada ambulancia.</CardDescription>
           </CardHeader>
           <CardContent>
             {ambulances.length > 0 ? (
@@ -132,7 +140,7 @@ export default function DashboardPage() {
                       <CardFooter>
                         <Button asChild className="w-full">
                            <Link href={status.path}>
-                             {status.text === "All Checks Completed" ? "View Details" : "Proceed to Task"}
+                             {status.text === "Todas las revisiones completas" ? "Ver Detalles" : "Ir a Tarea"}
                            </Link>
                         </Button>
                       </CardFooter>
@@ -141,7 +149,7 @@ export default function DashboardPage() {
                 })}
               </div>
             ) : (
-              <p className="text-muted-foreground">No ambulances registered yet. <Link href="/dashboard/ambulances" className="text-primary hover:underline">Add an ambulance</Link> to get started.</p>
+              <p className="text-muted-foreground">Aún no hay ambulancias registradas. <Link href="/dashboard/ambulances" className="text-primary hover:underline">Añade una ambulancia</Link> para empezar.</p>
             )}
           </CardContent>
         </Card>

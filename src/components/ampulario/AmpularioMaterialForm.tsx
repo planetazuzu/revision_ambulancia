@@ -6,11 +6,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Keep Label for general use
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; // Use ShadCN form components
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import type { AmpularioMaterial, MaterialRoute, Space } from '@/types';
 import { cn } from '@/lib/utils';
@@ -21,28 +21,28 @@ import { useToast } from '@/hooks/use-toast';
 const materialRouteEnum = z.enum(["IV/IM", "Nebulizador", "Oral"]);
 
 const ampularioMaterialSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, "El nombre es obligatorio"),
   dose: z.string().optional(),
   unit: z.string().optional(),
-  quantity: z.coerce.number().min(0, "Quantity must be non-negative"),
+  quantity: z.coerce.number().min(0, "La cantidad debe ser no negativa"),
   route: materialRouteEnum,
   expiry_date: z.date().optional().nullable(),
-  space_id: z.string().min(1, "Space is required"),
+  space_id: z.string().min(1, "El espacio es obligatorio"),
 });
 
 type AmpularioMaterialFormValues = z.infer<typeof ampularioMaterialSchema>;
 
 interface AmpularioMaterialFormProps {
   material?: AmpularioMaterial | null;
-  spaces: Space[]; // Pass spaces for selection
+  spaces: Space[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: () => void; // Callback to refresh data on parent
+  onSave: () => void;
 }
 
 export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, onSave }: AmpularioMaterialFormProps) {
   const { toast } = useToast();
-  
+
   const form = useForm<AmpularioMaterialFormValues>({
     resolver: zodResolver(ampularioMaterialSchema),
     defaultValues: {
@@ -52,7 +52,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
       quantity: 0,
       route: 'Oral',
       expiry_date: null,
-      space_id: spaces[0]?.id || '', // Default to first space or handle if no spaces
+      space_id: spaces[0]?.id || '',
     },
   });
 
@@ -76,7 +76,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
             quantity: 0,
             route: 'Oral',
             expiry_date: null,
-            space_id: spaces.find(s => s.id === 'space23')?.id || spaces[0]?.id || '', // Prefer 'Ampulario Principal'
+            space_id: spaces.find(s => s.id === 'space23')?.id || spaces[0]?.id || '',
         });
       }
     }
@@ -100,31 +100,37 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `${method} request failed`);
+        throw new Error(errorData.error || `La solicitud ${method} falló`);
       }
 
       toast({
-        title: material ? "Material Updated" : "Material Added",
-        description: `${data.name} has been successfully processed.`,
+        title: material ? "Material Actualizado" : "Material Añadido",
+        description: `${data.name} ha sido procesado correctamente.`,
       });
-      onSave(); // Trigger refresh
+      onSave();
       onOpenChange(false);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Could not save material.",
+        description: error.message || "No se pudo guardar el material.",
         variant: "destructive",
       });
     }
   };
 
+  const materialRoutesOptions: { value: MaterialRoute; label: string }[] = [
+    { value: 'IV/IM', label: 'IV/IM' },
+    { value: 'Nebulizador', label: 'Nebulizador' },
+    { value: 'Oral', label: 'Oral' },
+  ];
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{material ? 'Edit Material' : 'Add New Material'}</DialogTitle>
+          <DialogTitle>{material ? 'Editar Material' : 'Añadir Nuevo Material'}</DialogTitle>
           <DialogDescription>
-            Fill in the details for the Ampulario material.
+            Completa los detalles del material del Ampulario.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -134,8 +140,8 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
+                  <FormLabel>Nombre</FormLabel>
+                  <FormControl><Input placeholder="ej. Adrenalina 1mg" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -146,8 +152,8 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
                 name="dose"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Dose</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormLabel>Dosis</FormLabel>
+                    <FormControl><Input placeholder="ej. 1" {...field} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -157,8 +163,8 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
                 name="unit"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Unit</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormLabel>Unidad</FormLabel>
+                    <FormControl><Input placeholder="ej. mg/ml" {...field} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
@@ -169,8 +175,8 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
               name="quantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Quantity</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormLabel>Cantidad</FormLabel>
+                  <FormControl><Input type="number" placeholder="ej. 10" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -180,14 +186,14 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
               name="route"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Route</FormLabel>
+                  <FormLabel>Vía</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger><SelectValue placeholder="Select route" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar vía" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {(["IV/IM", "Nebulizador", "Oral"] as MaterialRoute[]).map(r => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      {materialRoutesOptions.map(r => (
+                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -200,7 +206,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
               name="expiry_date"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Expiry Date (Optional)</FormLabel>
+                  <FormLabel>Fecha de Caducidad (Opcional)</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -208,7 +214,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
                           variant={"outline"}
                           className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                         >
-                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                          {field.value ? format(field.value, "PPP") : <span>Elige una fecha</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
@@ -231,10 +237,10 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
               name="space_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Space</FormLabel>
+                  <FormLabel>Espacio</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger><SelectValue placeholder="Select space" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar espacio" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {spaces.map(s => (
@@ -248,9 +254,9 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
             />
             <DialogFooter className="pt-4">
               <DialogClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button type="button" variant="outline">Cancelar</Button>
               </DialogClose>
-              <Button type="submit">{material ? 'Save Changes' : 'Add Material'}</Button>
+              <Button type="submit">{material ? 'Guardar Cambios' : 'Añadir Material'}</Button>
             </DialogFooter>
           </form>
         </Form>

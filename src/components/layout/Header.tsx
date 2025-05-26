@@ -29,7 +29,7 @@ export function Header() {
             onClick={toggleSidebar}
           >
             <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle navigation menu</span>
+            <span className="sr-only">Alternar menú de navegación</span>
           </Button>
       </div>
 
@@ -42,19 +42,19 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" size="icon" className="rounded-full">
               <UserCircle className="h-5 w-5" />
-              <span className="sr-only">Toggle user menu</span>
+              <span className="sr-only">Alternar menú de usuario</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{user ? user.name : 'Guest'}</DropdownMenuLabel>
+            <DropdownMenuLabel>{user ? user.name : 'Invitado'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {/* Add other user-specific items here if needed */}
-            {/* <DropdownMenuItem>Settings</DropdownMenuItem> */}
-            {/* <DropdownMenuItem>Support</DropdownMenuItem> */}
+            {/* <DropdownMenuItem>Configuración</DropdownMenuItem> */}
+            {/* <DropdownMenuItem>Soporte</DropdownMenuItem> */}
             {/* <DropdownMenuSeparator /> */}
             <DropdownMenuItem onClick={logout} className="cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              Cerrar Sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label"; // Added import for ShadCN Label
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -43,17 +43,10 @@ export default function AmpularioPage() {
   const [editingMaterial, setEditingMaterial] = useState<AmpularioMaterial | null>(null);
 
   const fetchSpaces = useCallback(async () => {
-    // In a real app, spaces might be fetched too. For now, using hardcoded/store based.
-    // This is a placeholder if we were to fetch spaces.
-    // For now, we'll assume the initial spaces from the store are sufficient.
-    // We'll add a function to fetch them if needed, but for now, they are part of the server-side store.
-    // Simplified: just setting one space for now for the dropdown.
-    // In a real scenario, you'd fetch a list of available spaces.
-    // For now, this is a limitation of the mock setup.
-    // We'll rely on the server-side store for space validation during import.
-    setSpaces([{ id: 'space23', name: 'Ampulario Principal' }, { id: 'space01', name: 'Ambulancia 01 Stock Local' }]);
+    // Hardcoded spaces for now, as per current app structure.
+    setSpaces([{ id: 'space23', name: 'Ampulario Principal' }, { id: 'space01', name: 'Stock Local Ambulancia 01' }]);
   }, []);
-  
+
   const fetchMaterials = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -61,13 +54,13 @@ export default function AmpularioPage() {
       if (selectedSpaceId) params.append('spaceId', selectedSpaceId);
       if (filterRoute !== 'all') params.append('routeName', filterRoute);
       if (searchTerm) params.append('nameQuery', searchTerm);
-      
+
       const response = await fetch(`/api/materials?${params.toString()}`);
-      if (!response.ok) throw new Error('Failed to fetch materials');
+      if (!response.ok) throw new Error('No se pudieron cargar los materiales');
       const data = await response.json();
       setMaterials(data);
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Could not fetch materials.", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "No se pudieron cargar los materiales.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -92,17 +85,17 @@ export default function AmpularioPage() {
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.error || 'CSV import failed. Details: ' + (result.details || []).join(', '));
+        throw new Error(result.error || 'Falló la importación del CSV. Detalles: ' + (result.details || []).join(', '));
       }
-      toast({ title: "Import Successful", description: `${result.imported} materials imported.` });
+      toast({ title: "Importación Exitosa", description: `${result.imported} materiales importados.` });
       fetchMaterials(); // Refresh list
     } catch (error: any) {
-      toast({ title: "Import Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error de Importación", description: error.message, variant: "destructive" });
     } finally {
         event.target.value = ''; // Reset file input
     }
   };
-  
+
   const handleAddNew = () => {
     setEditingMaterial(null);
     setIsFormOpen(true);
@@ -118,9 +111,9 @@ export default function AmpularioPage() {
       const response = await fetch(`/api/materials/${materialId}`, { method: 'DELETE' });
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete material.');
+        throw new Error(errorData.error || 'No se pudo eliminar el material.');
       }
-      toast({ title: "Material Deleted", description: "The material has been removed." });
+      toast({ title: "Material Eliminado", description: "El material ha sido eliminado." });
       fetchMaterials(); // Refresh list
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -130,28 +123,34 @@ export default function AmpularioPage() {
   const clearFilters = () => {
     setSearchTerm('');
     setFilterRoute('all');
-    setSelectedSpaceId(DEFAULT_SPACE_ID); // Reset to default space or implement logic to clear/select 'all spaces' if desired
+    setSelectedSpaceId(DEFAULT_SPACE_ID);
   };
 
   const filteredMaterials = useMemo(() => {
-    // Client-side filtering if needed, but API is already filtering
     return materials;
   }, [materials]);
+
+  const materialRoutes: { value: MaterialRoute | 'all'; label: string }[] = [
+    { value: 'all', label: 'Todas las Vías' },
+    { value: 'IV/IM', label: 'IV/IM' },
+    { value: 'Nebulizador', label: 'Nebulizador' },
+    { value: 'Oral', label: 'Oral' },
+  ];
 
 
   return (
     <div>
       <PageHeader
-        title="Ampulario Management"
-        description={`Manage materials for ${spaces.find(s => s.id === selectedSpaceId)?.name || 'selected space'}.`}
+        title="Gestión de Ampulario"
+        description={`Gestionar materiales para ${spaces.find(s => s.id === selectedSpaceId)?.name || 'el espacio seleccionado'}.`}
         action={
           <div className="flex gap-2">
             <Button onClick={handleAddNew}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add New Material
+              <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nuevo Material
             </Button>
             <Button asChild variant="outline">
               <label htmlFor="csv-upload" className="cursor-pointer">
-                <Upload className="mr-2 h-4 w-4" /> Import CSV
+                <Upload className="mr-2 h-4 w-4" /> Importar CSV
                 <input id="csv-upload" type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
               </label>
             </Button>
@@ -161,18 +160,18 @@ export default function AmpularioPage() {
 
       <Card className="mb-6">
         <CardHeader>
-            <CardTitle>Filters</CardTitle>
-            <CardDescription>Refine the list of materials.</CardDescription>
+            <CardTitle>Filtros</CardTitle>
+            <CardDescription>Refinar la lista de materiales.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-                <Label htmlFor="search-material" className="block text-sm font-medium text-muted-foreground mb-1">Search by Name</Label>
+                <Label htmlFor="search-material" className="block text-sm font-medium text-muted-foreground mb-1">Buscar por Nombre</Label>
                 <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         id="search-material"
                         type="search"
-                        placeholder="Search material name..."
+                        placeholder="Buscar nombre de material..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-8 w-full"
@@ -180,10 +179,10 @@ export default function AmpularioPage() {
                 </div>
             </div>
             <div className="flex-1 sm:flex-initial sm:w-1/3">
-                <Label htmlFor="filter-space" className="block text-sm font-medium text-muted-foreground mb-1">Space</Label>
+                <Label htmlFor="filter-space" className="block text-sm font-medium text-muted-foreground mb-1">Espacio</Label>
                  <Select value={selectedSpaceId} onValueChange={setSelectedSpaceId}>
                     <SelectTrigger id="filter-space">
-                        <SelectValue placeholder="Select space" />
+                        <SelectValue placeholder="Seleccionar espacio" />
                     </SelectTrigger>
                     <SelectContent>
                         {spaces.map(space => (
@@ -193,22 +192,21 @@ export default function AmpularioPage() {
                 </Select>
             </div>
              <div className="flex-1 sm:flex-initial sm:w-1/3">
-                <Label htmlFor="filter-route" className="block text-sm font-medium text-muted-foreground mb-1">Route</Label>
+                <Label htmlFor="filter-route" className="block text-sm font-medium text-muted-foreground mb-1">Vía</Label>
                 <Select value={filterRoute} onValueChange={(value) => setFilterRoute(value as MaterialRoute | 'all')}>
                     <SelectTrigger id="filter-route">
-                        <SelectValue placeholder="Filter by route" />
+                        <SelectValue placeholder="Filtrar por vía" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Routes</SelectItem>
-                        {(["IV/IM", "Nebulizador", "Oral"] as MaterialRoute[]).map(r => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                        {materialRoutes.map(r => (
+                          <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
             </div>
             <div className="flex items-end">
                 <Button variant="outline" onClick={clearFilters} className="w-full sm:w-auto">
-                    <FilterX className="mr-2 h-4 w-4" /> Clear Filters
+                    <FilterX className="mr-2 h-4 w-4" /> Limpiar Filtros
                 </Button>
             </div>
         </CardContent>
@@ -216,10 +214,10 @@ export default function AmpularioPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Material List</CardTitle>
+          <CardTitle>Listado de Materiales</CardTitle>
           <CardDescription>
-            Showing {filteredMaterials.length} material(s) for the selected criteria.
-            Materials expiring within 3 days are highlighted in orange, expired materials in red.
+            Mostrando {filteredMaterials.length} material(es) para los criterios seleccionados.
+            Los materiales que caducan en 3 días o menos están resaltados en naranja, los caducados en rojo.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -227,18 +225,18 @@ export default function AmpularioPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Dose</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Route</TableHead>
-                  <TableHead>Expiry Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Dosis</TableHead>
+                  <TableHead>Unidad</TableHead>
+                  <TableHead>Cantidad</TableHead>
+                  <TableHead>Vía</TableHead>
+                  <TableHead>Fecha Caducidad</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="h-24 text-center">Loading materials...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="h-24 text-center">Cargando materiales...</TableCell></TableRow>
                 ) : filteredMaterials.length > 0 ? (
                   filteredMaterials.map((material) => {
                     let expiryStatusClass = '';
@@ -247,41 +245,43 @@ export default function AmpularioPage() {
                         const expiry = parseISO(material.expiry_date);
                         if (isValid(expiry)) {
                             daysToExpiry = differenceInDays(expiry, new Date());
-                            if (daysToExpiry < 0) expiryStatusClass = 'bg-destructive/10 text-destructive'; // Expired
-                            else if (daysToExpiry <= 3) expiryStatusClass = 'bg-orange-500/10 text-orange-600'; // Expiring soon (using direct orange for visibility)
+                            if (daysToExpiry < 0) expiryStatusClass = 'bg-destructive/10 text-destructive';
+                            else if (daysToExpiry <= 3) expiryStatusClass = 'bg-orange-500/10 text-orange-600';
                         }
                     }
                     return (
                       <TableRow key={material.id} className={cn(expiryStatusClass)}>
                         <TableCell className="font-medium">{material.name}</TableCell>
-                        <TableCell>{material.dose || 'N/A'}</TableCell>
-                        <TableCell>{material.unit || 'N/A'}</TableCell>
+                        <TableCell>{material.dose || 'N/D'}</TableCell>
+                        <TableCell>{material.unit || 'N/D'}</TableCell>
                         <TableCell>{material.quantity}</TableCell>
                         <TableCell>{material.route}</TableCell>
                         <TableCell>
-                          {material.expiry_date ? format(parseISO(material.expiry_date), 'PPP') : 'N/A'}
+                          {material.expiry_date ? format(parseISO(material.expiry_date), 'PPP') : 'N/D'}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(material)} className="mr-1">
                             <Edit className="h-4 w-4" />
+                            <span className="sr-only">Editar</span>
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80">
                                 <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Eliminar</span>
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the material "{material.name}".
+                                  Esta acción no se puede deshacer. Esto eliminará permanentemente el material "{material.name}".
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => handleDelete(material.id)}>
-                                  Delete
+                                  Eliminar
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -293,7 +293,7 @@ export default function AmpularioPage() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={7} className="h-24 text-center">
-                      No materials found for the current filters.
+                      No se encontraron materiales para los filtros actuales.
                     </TableCell>
                   </TableRow>
                 )}
@@ -315,4 +315,3 @@ export default function AmpularioPage() {
     </div>
   );
 }
-// Removed local Label component definition, will use imported ShadCN Label

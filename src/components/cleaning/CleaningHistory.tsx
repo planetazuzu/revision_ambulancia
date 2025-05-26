@@ -5,11 +5,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { CleaningLog } from "@/types";
 import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface CleaningHistoryProps {
   logs: CleaningLog[];
-  // In a real app, you'd fetch user names based on responsiblePersonId
-  // For now, we'll just show the ID or a mock name.
 }
 
 export function CleaningHistory({ logs }: CleaningHistoryProps) {
@@ -17,10 +16,10 @@ export function CleaningHistory({ logs }: CleaningHistoryProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Cleaning History</CardTitle>
+          <CardTitle>Historial de Limpieza</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No cleaning logs found for this ambulance.</p>
+          <p className="text-muted-foreground">No se encontraron registros de limpieza para esta ambulancia.</p>
         </CardContent>
       </Card>
     );
@@ -29,27 +28,27 @@ export function CleaningHistory({ logs }: CleaningHistoryProps) {
   return (
     <Card className="mt-8 shadow-lg">
       <CardHeader>
-        <CardTitle>Cleaning History</CardTitle>
-        <CardDescription>Past cleaning records for this ambulance.</CardDescription>
+        <CardTitle>Historial de Limpieza</CardTitle>
+        <CardDescription>Registros de limpieza anteriores para esta ambulancia.</CardDescription>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[300px] rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Responsible</TableHead>
-                <TableHead>Materials Used</TableHead>
-                <TableHead>Observations</TableHead>
+                <TableHead>Fecha y Hora</TableHead>
+                <TableHead>Responsable</TableHead>
+                <TableHead>Materiales Usados</TableHead>
+                <TableHead>Observaciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {logs.map((log) => (
                 <TableRow key={log.id}>
-                  <TableCell>{format(new Date(log.dateTime), 'PPP p')}</TableCell>
-                  <TableCell>{log.responsiblePersonId}</TableCell> {/* Mock: replace with actual name */}
+                  <TableCell>{format(new Date(log.dateTime), 'PPP p', { locale: es })}</TableCell>
+                  <TableCell>{log.responsiblePersonId}</TableCell>
                   <TableCell>{log.materialsUsed}</TableCell>
-                  <TableCell>{log.observations || 'N/A'}</TableCell>
+                  <TableCell>{log.observations || 'N/D'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

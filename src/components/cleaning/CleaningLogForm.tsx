@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
 const cleaningLogSchema = z.object({
-  materialsUsed: z.string().min(3, "Please list materials used."),
+  materialsUsed: z.string().min(3, "Por favor, lista los materiales usados."),
   observations: z.string().optional(),
 });
 
@@ -41,7 +41,7 @@ export function CleaningLogForm({ ambulance }: CleaningLogFormProps) {
 
   const onSubmit = (data: CleaningLogFormValues) => {
     if (!user) {
-      toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
+      toast({ title: "Error", description: "Debes iniciar sesión.", variant: "destructive" });
       return;
     }
     const logData: Omit<CleaningLog, 'id'> = {
@@ -53,14 +53,14 @@ export function CleaningLogForm({ ambulance }: CleaningLogFormProps) {
     };
     addCleaningLog(logData);
     updateAmbulanceWorkflowStep(ambulance.id, 'cleaning', true);
-    toast({ title: "Cleaning Logged", description: `Cleaning for ${ambulance.name} has been logged.` });
+    toast({ title: "Limpieza Registrada", description: `La limpieza para ${ambulance.name} ha sido registrada.` });
     router.push(`/dashboard/ambulances/${ambulance.id}/inventory`);
   };
 
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle>Log Cleaning Task</CardTitle>
+        <CardTitle>Registrar Tarea de Limpieza</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -70,9 +70,9 @@ export function CleaningLogForm({ ambulance }: CleaningLogFormProps) {
               name="materialsUsed"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Materials and Means Used</FormLabel>
+                  <FormLabel>Materiales y Medios Usados</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Disinfectant wipes, vacuum cleaner, bleach solution" {...field} />
+                    <Input placeholder="ej., Toallitas desinfectantes, aspiradora, solución de lejía" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -83,19 +83,19 @@ export function CleaningLogForm({ ambulance }: CleaningLogFormProps) {
               name="observations"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Observations (Optional)</FormLabel>
+                  <FormLabel>Observaciones (Opcional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="e.g., Heavy soiling on seats, specific areas requiring extra attention." {...field} />
+                    <Textarea placeholder="ej., Suciedad intensa en asientos, áreas específicas que requieren atención extra." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <p className="text-sm text-muted-foreground">
-              Date, time, and responsible person ({user?.name || 'Current User'}) will be automatically recorded.
+              Fecha, hora y persona responsable ({user?.name || 'Usuario Actual'}) se registrarán automáticamente.
             </p>
             <CardFooter className="p-0 pt-6 flex justify-end">
-              <Button type="submit" size="lg">Log Cleaning & Proceed</Button>
+              <Button type="submit" size="lg">Registrar Limpieza y Continuar</Button>
             </CardFooter>
           </form>
         </Form>

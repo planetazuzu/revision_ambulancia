@@ -19,22 +19,22 @@ export default function CleaningPage() {
   useEffect(() => {
     if (ambulance && !ambulance.mechanicalReviewCompleted) {
       toast({
-        title: "Workflow Step Skipped",
-        description: "Please complete the Mechanical Review before proceeding to Cleaning.",
+        title: "Paso de Flujo Omitido",
+        description: "Por favor, completa la Revisión Mecánica antes de proceder a la Limpieza.",
         variant: "destructive",
       });
       router.push(`/dashboard/ambulances/${id}/review`);
     }
   }, [ambulance, id, router, toast]);
-  
+
   if (!ambulance) {
-    return <p>Ambulance not found.</p>;
+    return <p>Ambulancia no encontrada.</p>;
   }
 
   if (!ambulance.mechanicalReviewCompleted) {
      return <div className="p-6 text-center">
-        <p className="text-lg font-semibold">Mechanical Review Required</p>
-        <p className="text-muted-foreground">Please complete the mechanical review for {ambulance.name} first.</p>
+        <p className="text-lg font-semibold">Revisión Mecánica Requerida</p>
+        <p className="text-muted-foreground">Por favor, completa primero la revisión mecánica para {ambulance.name}.</p>
       </div>;
   }
 

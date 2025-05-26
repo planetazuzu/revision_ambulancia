@@ -10,21 +10,20 @@ export interface NavItem {
 }
 
 export const mainNavItems: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/ambulances', label: 'Ambulances', icon: Ambulance },
+  { href: '/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
+  { href: '/dashboard/ambulances', label: 'Ambulancias', icon: Ambulance },
   { href: '/dashboard/ampulario', label: 'Ampulario', icon: Archive },
-  { href: '/dashboard/alerts', label: 'Alerts', icon: Bell },
+  { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
 ];
 
 export const userNavItems: NavItem[] = [
-    // { href: '/dashboard/profile', label: 'Profile', icon: UserCircle },
-    // { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-    // Add more user-specific links if needed
+    // { href: '/dashboard/profile', label: 'Perfil', icon: UserCircle },
+    // { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
 ];
 
 
 export const ambulanceWorkflowSteps = (ambulanceId: string) => [
-  { name: "Mechanical Review", path: `/dashboard/ambulances/${ambulanceId}/review`, icon: Wrench, key: 'mechanicalReviewCompleted' },
-  { name: "Cleaning Log", path: `/dashboard/ambulances/${ambulanceId}/cleaning`, icon: Sparkles, key: 'cleaningCompleted' },
-  { name: "Inventory Check", path: `/dashboard/ambulances/${ambulanceId}/inventory`, icon: Boxes, key: 'inventoryCompleted' },
+  { name: "Revisión Mecánica", path: `/dashboard/ambulances/${ambulanceId}/review`, icon: Wrench, key: 'mechanicalReviewCompleted' },
+  { name: "Registro de Limpieza", path: `/dashboard/ambulances/${ambulanceId}/cleaning`, icon: Sparkles, key: 'cleaningCompleted' },
+  { name: "Control de Inventario", path: `/dashboard/ambulances/${ambulanceId}/inventory`, icon: Boxes, key: 'inventoryCompleted' },
 ];

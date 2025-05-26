@@ -1,53 +1,53 @@
-# AmbuReview - Ambulance Management System
+# AmbuReview - Sistema de Gestión de Ambulancias
 
-This is a Next.js application for managing ambulance reviews, cleaning logs, and inventory, built within Firebase Studio.
+Esta es una aplicación Next.js para gestionar revisiones de ambulancias, registros de limpieza e inventario, construida con Firebase Studio.
 
-## Getting Started
+## Para Empezar
 
-To get started, explore the application structure, particularly `src/app/page.tsx` (Login Page) and the dashboard pages under `src/app/dashboard/`.
+Para comenzar, explora la estructura de la aplicación, particularmente `src/app/page.tsx` (Página de Inicio de Sesión) y las páginas del panel de control bajo `src/app/dashboard/`.
 
-## Data Management
+## Gestión de Datos
 
-This application currently uses a **mock data layer**.
-- Ambulance-specific data (details, mechanical reviews, cleaning logs, on-board inventory) is managed client-side via React Context (`src/contexts/AppDataContext.tsx`). This data is initialized with sample values and persists only for the duration of the browser session.
-- The "Ampulario" (central medical supply inventory) feature uses **server-side in-memory storage** (`src/lib/ampularioStore.ts`) accessed via Next.js API Routes. This data is also reset when the server restarts.
+Actualmente, esta aplicación utiliza una **capa de datos de demostración (mock)**.
+- Los datos específicos de las ambulancias (detalles, revisiones mecánicas, registros de limpieza, inventario a bordo) se gestionan en el lado del cliente mediante React Context (`src/contexts/AppDataContext.tsx`). Estos datos se inicializan con valores de ejemplo y persisten solo durante la sesión del navegador.
+- La funcionalidad "Ampulario" (inventario central de suministros médicos) utiliza **almacenamiento en memoria del lado del servidor** (`src/lib/ampularioStore.ts`) accesible mediante Rutas API de Next.js. Estos datos también se restablecen cuando el servidor se reinicia.
 
-**No external database is configured for this prototype.**
+**No hay una base de datos externa configurada para este prototipo.**
 
-## Key Features
+## Características Clave
 
--   User Authentication (mocked)
--   Ambulance Management
--   Sequential Workflow for ambulance checks:
-    1.  Mechanical Review
-    2.  Cleaning Log
-    3.  Inventory Check (on-board supplies)
--   **Ampulario (Central Inventory)**:
-    -   Manage a central stock of medical supplies.
-    -   Import supplies via CSV.
-    -   Track expiry dates.
--   System Alerts (in-app):
-    -   Pending ambulance tasks.
-    -   Expiry alerts for on-board ambulance supplies.
-    -   Expiry alerts for Ampulario supplies.
+- Autenticación de Usuarios (simulada)
+- Gestión de Ambulancias
+- Flujo de Trabajo Secuencial para revisiones de ambulancias:
+    1. Revisión Mecánica
+    2. Registro de Limpieza
+    3. Control de Inventario (suministros a bordo)
+- **Ampulario (Inventario Central)**:
+    - Gestionar un stock central de suministros médicos.
+    - Importar suministros mediante CSV.
+    - Rastrear fechas de caducidad.
+- Alertas del Sistema (en la aplicación):
+    - Tareas pendientes de ambulancias.
+    - Alertas de caducidad para suministros a bordo de ambulancias.
+    - Alertas de caducidad para suministros del Ampulario.
 
-## API Endpoints (for Ampulario)
+## Endpoints API (para Ampulario)
 
-The following API endpoints are available for managing Ampulario materials:
+Los siguientes endpoints API están disponibles para gestionar los materiales del Ampulario:
 
--   **`POST /api/ampulario/import`**
-    -   Description: Imports materials from a CSV file into a specified space in the Ampulario.
-    -   Request Body: `multipart/form-data` with a `file` field containing the CSV.
-    -   CSV Columns: `name, dose, unit, quantity, route, expiry_date, space_id`
-        -   `name` (string, required): Name of the material.
-        -   `dose` (string, optional): Dosage information.
-        -   `unit` (string, optional): Unit for the dose.
-        -   `quantity` (integer, required): Quantity, must be >= 0.
-        -   `route` (enum, required): Administration route. Valid values: "IV/IM", "Nebulizador", "Oral".
-        -   `expiry_date` (date string, optional): Expiry date (e.g., "YYYY-MM-DD", "DD/MM/YYYY").
-        -   `space_id` (string, required): ID of the space where the material is stored (e.g., "space23").
-    -   Response: `{ "imported": N }` where N is the number of successfully imported materials.
-    -   Example CSV (`ampulario_example.csv`):
+- **`POST /api/ampulario/import`**
+    - Descripción: Importa materiales desde un archivo CSV a un espacio específico en el Ampulario.
+    - Cuerpo de la Solicitud: `multipart/form-data` con un campo `file` conteniendo el CSV.
+    - Columnas del CSV: `name, dose, unit, quantity, route, expiry_date, space_id`
+        - `name` (string, obligatorio): Nombre del material.
+        - `dose` (string, opcional): Información de la dosis.
+        - `unit` (string, opcional): Unidad para la dosis.
+        - `quantity` (entero, obligatorio): Cantidad, debe ser >= 0.
+        - `route` (enum, obligatorio): Vía de administración. Valores válidos: "IV/IM", "Nebulizador", "Oral".
+        - `expiry_date` (string de fecha, opcional): Fecha de caducidad (ej., "AAAA-MM-DD", "DD/MM/AAAA").
+        - `space_id` (string, obligatorio): ID del espacio donde se almacena el material (ej., "space23").
+    - Respuesta: `{ "imported": N }` donde N es el número de materiales importados con éxito.
+    - Ejemplo de CSV (`ampulario_example.csv`):
         ```csv
         name,dose,unit,quantity,route,expiry_date,space_id
         Adrenalina 1mg/1ml,1,mg/ml,10,IV/IM,2025-12-31,space23
@@ -56,36 +56,36 @@ The following API endpoints are available for managing Ampulario materials:
         Diazepam 10mg,10,mg,5,IV/IM,2025-06-30,space23
         ```
 
--   **`GET /api/materials?spaceId=<ID>&routeName=<ROUTE>&nameQuery=<QUERY>`**
-    -   Description: Retrieves a list of Ampulario materials. All query parameters are optional.
-    -   `spaceId` (string, optional): Filter by space ID.
-    -   `routeName` (string, optional): Filter by material route ("IV/IM", "Nebulizador", "Oral").
-    -   `nameQuery` (string, optional): Filter by name (case-insensitive substring match).
-    -   Response: Array of `AmpularioMaterial` objects.
+- **`GET /api/materials?spaceId=<ID>&routeName=<ROUTE>&nameQuery=<QUERY>`**
+    - Descripción: Obtiene una lista de materiales del Ampulario. Todos los parámetros de consulta son opcionales.
+    - `spaceId` (string, opcional): Filtrar por ID de espacio.
+    - `routeName` (string, opcional): Filtrar por vía del material ("IV/IM", "Nebulizador", "Oral").
+    - `nameQuery` (string, opcional): Filtrar por nombre (coincidencia de subcadena insensible a mayúsculas).
+    - Respuesta: Array de objetos `AmpularioMaterial`.
 
--   **`POST /api/materials`**
-    -   Description: Adds a new single material to the Ampulario.
-    -   Request Body (JSON): `AmpularioMaterial` object (excluding `id`, `created_at`, `updated_at`).
-    -   Response: The created `AmpularioMaterial` object.
+- **`POST /api/materials`**
+    - Descripción: Añade un nuevo material único al Ampulario.
+    - Cuerpo de la Solicitud (JSON): Objeto `AmpularioMaterial` (excluyendo `id`, `created_at`, `updated_at`).
+    - Respuesta: El objeto `AmpularioMaterial` creado.
 
--   **`GET /api/materials/[id]`**
-    -   Description: Retrieves a specific Ampulario material by its ID.
-    -   Response: The `AmpularioMaterial` object or 404 if not found.
+- **`GET /api/materials/[id]`**
+    - Descripción: Obtiene un material específico del Ampulario por su ID.
+    - Respuesta: El objeto `AmpularioMaterial` o 404 si no se encuentra.
 
--   **`PUT /api/materials/[id]`**
-    -   Description: Updates an existing Ampulario material.
-    -   Request Body (JSON): Partial `AmpularioMaterial` object with fields to update (e.g., `quantity`, `expiry_date`).
-    -   Response: The updated `AmpularioMaterial` object or 404 if not found.
+- **`PUT /api/materials/[id]`**
+    - Descripción: Actualiza un material existente del Ampulario.
+    - Cuerpo de la Solicitud (JSON): Objeto `AmpularioMaterial` parcial con los campos a actualizar (ej., `quantity`, `expiry_date`).
+    - Respuesta: El objeto `AmpularioMaterial` actualizado o 404 si no se encuentra.
 
--   **`DELETE /api/materials/[id]`**
-    -   Description: Deletes an Ampulario material by its ID.
-    -   Response: Success message or 404 if not found.
+- **`DELETE /api/materials/[id]`**
+    - Descripción: Elimina un material del Ampulario por su ID.
+    - Respuesta: Mensaje de éxito o 404 si no se encuentra.
 
--   **`GET /api/ampulario/alerts?spaceId=<ID>`**
-    -   Description: Retrieves expiry alerts for Ampulario materials.
-    -   `spaceId` (string, optional): Filter alerts for a specific space. If omitted, returns alerts for all spaces.
-    -   Response: Array of `Alert` objects related to Ampulario material expiry.
+- **`GET /api/ampulario/alerts?spaceId=<ID>`**
+    - Descripción: Obtiene alertas de caducidad para materiales del Ampulario.
+    - `spaceId` (string, opcional): Filtrar alertas para un espacio específico. Si se omite, devuelve alertas para todos los espacios.
+    - Respuesta: Array de objetos `Alert` relacionados con la caducidad de materiales del Ampulario.
 
-## Future Development
+## Desarrollo Futuro
 
-For a production application, the mock data layer and in-memory store would be replaced with a persistent database (e.g., PostgreSQL, Firestore) and corresponding backend services. Cron jobs for alerts would be set up using a task scheduler.
+Para una aplicación de producción, la capa de datos de demostración y el almacén en memoria se reemplazarían con una base de datos persistente (ej., PostgreSQL, Firestore) y los servicios de backend correspondientes. Los trabajos cron para alertas se configurarían utilizando un programador de tareas.

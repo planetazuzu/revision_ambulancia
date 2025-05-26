@@ -14,11 +14,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data
 const mockUsers: User[] = [
-  { id: 'user1', name: 'Dr. Smith', role: 'reviewer' },
-  { id: 'user2', name: 'Janitor Joe', role: 'cleaner' },
-  { id: 'user3', name: 'Admin Alice', role: 'admin' },
+  { id: 'user1', name: 'Dr. García', role: 'reviewer' },
+  { id: 'user2', name: 'Juan Limpieza', role: 'cleaner' },
+  { id: 'user3', name: 'Admin Alicia', role: 'admin' },
 ];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -27,7 +26,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Simulate checking for a stored session
     const storedUser = localStorage.getItem('ambuReviewUser');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
@@ -36,9 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = (name: string) => {
-    // Simple mock login: find user by name or use a default
     const foundUser = mockUsers.find(u => u.name.toLowerCase() === name.toLowerCase());
-    const loggedInUser = foundUser || mockUsers[0]; // Default to first mock user
+    const loggedInUser = foundUser || { id: `user-${Date.now()}`, name: name || "Usuario Invitado", role: 'reviewer' }; // Default if not found or name is empty
     setUser(loggedInUser);
     localStorage.setItem('ambuReviewUser', JSON.stringify(loggedInUser));
     router.push('/dashboard');
@@ -60,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
   }
   return context;
 }

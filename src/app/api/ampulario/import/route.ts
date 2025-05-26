@@ -1,6 +1,4 @@
 // /api/ampulario/import
-// Note: In a real app, this would interact with a database.
-// Here, it interacts with the server-side in-memory store.
 import { NextResponse, type NextRequest } from 'next/server';
 import Papa from 'papaparse';
 import { addMultipleAmpularioMaterials, getSpaceById } from '@/lib/ampularioStore';
@@ -13,13 +11,11 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      return NextResponse.json({ error: 'No se subió ningún archivo' }, { status: 400 });
     }
 
     const fileContent = await file.text();
 
-    // TODO: Add explicit 'use server' if this were a server action. As an API route, it's server-side by default.
-    
     let importedCount = 0;
     const errors: string[] = [];
     let parseError = false;
@@ -30,12 +26,12 @@ export async function POST(request: NextRequest) {
           skipEmptyLines: true,
           complete: (results) => {
             if (results.errors.length > 0) {
-                errors.push(`CSV parsing errors: ${results.errors.map(e => e.message).join(', ')}`);
+                errors.push(`Errores de parseo CSV: ${results.errors.map(e => e.message).join(', ')}`);
                 parseError = true;
             }
-            
+
             if (parseError) {
-                resolve(NextResponse.json({ error: 'Failed to parse CSV.', details: errors }, { status: 400 }));
+                resolve(NextResponse.json({ error: 'Error al parsear el CSV.', details: errors }, { status: 400 }));
                 return;
             }
 
@@ -45,39 +41,36 @@ export async function POST(request: NextRequest) {
               const { name, dose, unit, quantity, route, expiry_date, space_id } = row;
 
               if (!name || !space_id) {
-                errors.push(`Row ${index + 2}: Missing required fields (name, space_id).`);
+                errors.push(`Fila ${index + 2}: Faltan campos obligatorios (name, space_id).`);
                 return;
               }
 
               if (!getSpaceById(space_id)) {
-                errors.push(`Row ${index + 2}: Invalid space_id '${space_id}'. Space does not exist.`);
+                errors.push(`Fila ${index + 2}: space_id '${space_id}' inválido. El espacio no existe.`);
                 return;
               }
 
               const parsedQuantity = parseInt(quantity, 10);
               if (isNaN(parsedQuantity) || parsedQuantity < 0) {
-                errors.push(`Row ${index + 2}: Invalid quantity '${quantity}'. Must be a non-negative integer.`);
+                errors.push(`Fila ${index + 2}: Cantidad '${quantity}' inválida. Debe ser un entero no negativo.`);
                 return;
               }
-              
+
               const validRoutes: MaterialRoute[] = ["IV/IM", "Nebulizador", "Oral"];
               if (route && !validRoutes.includes(route as MaterialRoute)) {
-                  errors.push(`Row ${index + 2}: Invalid route '${route}'. Must be one of: ${validRoutes.join(', ')}.`);
+                  errors.push(`Fila ${index + 2}: Vía '${route}' inválida. Debe ser una de: ${validRoutes.join(', ')}.`);
                   return;
               }
 
               let formattedExpiryDate: string | undefined = undefined;
               if (expiry_date) {
-                // Try to parse various common date formats, e.g., YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY
-                let parsedDate = parseISO(expiry_date); // Handles YYYY-MM-DD directly
+                let parsedDate = parseISO(expiry_date);
                 if (!isValid(parsedDate)) {
                     const parts = expiry_date.split(/[\/\-]/);
                     if (parts.length === 3) {
-                        // Attempt DD/MM/YYYY
-                        parsedDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                        parsedDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`); // DD/MM/YYYY
                         if (!isValid(parsedDate)) {
-                            // Attempt MM/DD/YYYY
-                            parsedDate = new Date(`${parts[2]}-${parts[0]}-${parts[1]}`);
+                            parsedDate = new Date(`${parts[2]}-${parts[0]}-${parts[1]}`); // MM/DD/YYYY
                         }
                     }
                 }
@@ -85,7 +78,7 @@ export async function POST(request: NextRequest) {
                 if (isValid(parsedDate)) {
                   formattedExpiryDate = formatISO(parsedDate);
                 } else {
-                  errors.push(`Row ${index + 2}: Invalid expiry_date format '${expiry_date}'. Please use YYYY-MM-DD or ensure it's a valid date.`);
+                  errors.push(`Fila ${index + 2}: Formato de fecha de caducidad '${expiry_date}' inválido. Use AAAA-MM-DD o asegúrese de que sea una fecha válida.`);
                   return;
                 }
               }
@@ -95,14 +88,14 @@ export async function POST(request: NextRequest) {
                 dose: dose || '',
                 unit: unit || '',
                 quantity: parsedQuantity,
-                route: route as MaterialRoute || 'Oral', // Default if not specified or handle as error
+                route: route as MaterialRoute || 'Oral',
                 expiry_date: formattedExpiryDate,
                 space_id,
               });
             });
 
             if (errors.length > 0) {
-              resolve(NextResponse.json({ error: 'Validation errors during import.', details: errors }, { status: 400 }));
+              resolve(NextResponse.json({ error: 'Errores de validación durante la importación.', details: errors }, { status: 400 }));
               return;
             }
 
@@ -110,17 +103,17 @@ export async function POST(request: NextRequest) {
               addMultipleAmpularioMaterials(materialsToCreate);
               importedCount = materialsToCreate.length;
             }
-            
+
             resolve(NextResponse.json({ imported: importedCount }));
           },
           error: (error: Error) => {
-            resolve(NextResponse.json({ error: 'Failed to parse CSV file.', details: error.message }, { status: 400 }));
+            resolve(NextResponse.json({ error: 'Error al parsear el archivo CSV.', details: error.message }, { status: 400 }));
           }
         });
     });
 
   } catch (error) {
-    console.error('Import API error:', error);
-    return NextResponse.json({ error: 'Internal server error processing the file.' }, { status: 500 });
+    console.error('Error API de importación:', error);
+    return NextResponse.json({ error: 'Error interno del servidor al procesar el archivo.' }, { status: 500 });
   }
 }

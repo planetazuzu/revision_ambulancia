@@ -13,10 +13,10 @@ import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 const ambulanceFormSchema = z.object({
-  name: z.string().min(3, { message: "Name must be at least 3 characters." }),
-  licensePlate: z.string().min(3, { message: "License plate is required." }),
-  model: z.string().min(2, { message: "Model is required." }),
-  year: z.coerce.number().min(1900, { message: "Year must be valid." }).max(new Date().getFullYear() + 1, { message: "Year cannot be in the far future." }),
+  name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres." }),
+  licensePlate: z.string().min(3, { message: "La matrícula es obligatoria." }),
+  model: z.string().min(2, { message: "El modelo es obligatorio." }),
+  year: z.coerce.number().min(1900, { message: "El año debe ser válido." }).max(new Date().getFullYear() + 1, { message: "El año no puede ser muy futuro." }),
 });
 
 type AmbulanceFormValues = z.infer<typeof ambulanceFormSchema>;
@@ -62,10 +62,10 @@ export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: Ambulanc
   const onSubmit = (data: AmbulanceFormValues) => {
     if (ambulance) {
       updateAmbulance({ ...ambulance, ...data });
-      toast({ title: "Ambulance Updated", description: `${data.name} has been updated successfully.` });
+      toast({ title: "Ambulancia Actualizada", description: `${data.name} ha sido actualizada correctamente.` });
     } else {
       addAmbulance(data);
-      toast({ title: "Ambulance Added", description: `${data.name} has been added successfully.` });
+      toast({ title: "Ambulancia Añadida", description: `${data.name} ha sido añadida correctamente.` });
     }
     onOpenChange(false);
   };
@@ -74,9 +74,9 @@ export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: Ambulanc
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>{ambulance ? "Edit Ambulance" : "Add New Ambulance"}</SheetTitle>
+          <SheetTitle>{ambulance ? "Editar Ambulancia" : "Añadir Nueva Ambulancia"}</SheetTitle>
           <SheetDescription>
-            {ambulance ? "Update the details of the ambulance." : "Fill in the details for the new ambulance."}
+            {ambulance ? "Actualiza los detalles de la ambulancia." : "Completa los detalles para la nueva ambulancia."}
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
@@ -86,9 +86,9 @@ export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: Ambulanc
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name / Identifier</FormLabel>
+                  <FormLabel>Nombre / Identificador</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Ambulance 01, Unit 101" {...field} />
+                    <Input placeholder="ej., Ambulancia 01, Unidad 101" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -99,9 +99,9 @@ export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: Ambulanc
               name="licensePlate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>License Plate</FormLabel>
+                  <FormLabel>Matrícula</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., ABC 123" {...field} />
+                    <Input placeholder="ej., ABC 123" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -112,9 +112,9 @@ export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: Ambulanc
               name="model"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Model</FormLabel>
+                  <FormLabel>Modelo</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Mercedes Sprinter" {...field} />
+                    <Input placeholder="ej., Mercedes Sprinter" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -125,9 +125,9 @@ export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: Ambulanc
               name="year"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Year</FormLabel>
+                  <FormLabel>Año</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 2023" {...field} />
+                    <Input type="number" placeholder="ej., 2023" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -135,9 +135,9 @@ export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: Ambulanc
             />
             <SheetFooter className="mt-8">
               <SheetClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button type="button" variant="outline">Cancelar</Button>
               </SheetClose>
-              <Button type="submit">{ambulance ? "Save Changes" : "Add Ambulance"}</Button>
+              <Button type="submit">{ambulance ? "Guardar Cambios" : "Añadir Ambulancia"}</Button>
             </SheetFooter>
           </form>
         </Form>

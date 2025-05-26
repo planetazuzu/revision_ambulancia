@@ -28,8 +28,8 @@ import { cn } from '@/lib/utils';
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
-  const pathname = usePathname(); // Correct pathname string for the layout
-  
+  const pathname = usePathname();
+
 
   useEffect(() => {
     if (!loading && !user) {
@@ -40,14 +40,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p>Loading...</p> {/* Or a proper spinner component */}
+        <p>Cargando...</p>
       </div>
     );
   }
-  
+
   const NavContent = () => {
-    const { open } = useSidebar(); // Get sidebar state
-    // Removed: const pathname = useRouter(); - This was causing the issue by shadowing the outer pathname string.
+    const { open } = useSidebar();
 
     return (
        <>
@@ -67,7 +66,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                     asChild
-                    // Use the 'pathname' string from the outer scope directly
                     isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
                     tooltip={open ? undefined : item.label}
                 >
@@ -84,7 +82,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <SidebarFooter className="p-4 border-t border-sidebar-border mt-auto">
             <Button variant="ghost" onClick={logout} className={cn("w-full justify-start gap-2", open ? "" : "justify-center")}>
                 <LogOut className="h-5 w-5" />
-                <span className={cn(open ? "" : "sr-only")}>Logout</span>
+                <span className={cn(open ? "" : "sr-only")}>Cerrar Sesión</span>
             </Button>
         </SidebarFooter>
        </>

@@ -26,11 +26,11 @@ export default function AlertsPage() {
         // Assuming default space or all spaces for alerts overview.
         // Adjust API call if specific space filtering is needed here.
         const response = await fetch('/api/ampulario/alerts');
-        if (!response.ok) throw new Error('Failed to fetch Ampulario alerts');
+        if (!response.ok) throw new Error('No se pudieron cargar las alertas del Ampulario');
         const data: AppAlert[] = await response.json();
         setAmpularioAlerts(data);
       } catch (error: any) {
-        toast({ title: "Error", description: `Could not load Ampulario alerts: ${error.message}`, variant: "destructive" });
+        toast({ title: "Error", description: `No se pudieron cargar las alertas del Ampulario: ${error.message}`, variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
@@ -55,7 +55,7 @@ export default function AlertsPage() {
   const getIconForAlertType = (type: AppAlert['type'], severity: AppAlert['severity']) => {
     let colorClass = "text-muted-foreground"; // Default for low or undefined
     if (severity === 'high') colorClass = "text-destructive";
-    else if (severity === 'medium') colorClass = "text-orange-500"; // Using a direct orange
+    else if (severity === 'medium') colorClass = "text-orange-500";
 
     switch (type) {
       case 'review_pending': return <Wrench className={`h-5 w-5 ${colorClass}`} />;
@@ -67,47 +67,56 @@ export default function AlertsPage() {
     }
   };
 
+  const severityText = (severity: AppAlert['severity']) => {
+    switch(severity) {
+      case 'high': return 'Alta';
+      case 'medium': return 'Media';
+      case 'low': return 'Baja';
+      default: return severity;
+    }
+  }
+
 
   return (
     <div>
       <PageHeader
-        title="System Alerts"
-        description="Overview of pending tasks, material expiry, and other important notifications."
+        title="Alertas del Sistema"
+        description="Resumen de tareas pendientes, caducidad de materiales y otras notificaciones importantes."
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>All Alerts</CardTitle>
+          <CardTitle>Todas las Alertas</CardTitle>
           <CardDescription>
-            {isLoading && "Loading alerts..."}
-            {!isLoading && (allAlerts.length > 0 
-              ? `Showing ${allAlerts.length} alert(s).` 
-              : "No active alerts. System is running smoothly!")}
+            {isLoading && "Cargando alertas..."}
+            {!isLoading && (allAlerts.length > 0
+              ? `Mostrando ${allAlerts.length} alerta(s).`
+              : "No hay alertas activas. ¡El sistema funciona correctamente!")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
              <div className="text-center py-10">
               <Info className="mx-auto h-12 w-12 text-muted-foreground animate-pulse" />
-              <p className="mt-4 text-lg font-medium">Loading Alerts...</p>
+              <p className="mt-4 text-lg font-medium">Cargando Alertas...</p>
             </div>
           ) : allAlerts.length > 0 ? (
             <ScrollArea className="h-[calc(100vh-20rem)] rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">Type</TableHead>
-                    <TableHead>Message</TableHead>
-                    <TableHead>Context</TableHead> {/* Ambulance or Space */}
-                    <TableHead>Severity</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead className="w-[50px]">Tipo</TableHead>
+                    <TableHead>Mensaje</TableHead>
+                    <TableHead>Contexto</TableHead> {/* Ambulance or Space */}
+                    <TableHead>Gravedad</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead className="text-right">Acción</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {allAlerts.map((alert) => {
                     const ambulance = alert.ambulanceId ? getAmbulanceById(alert.ambulanceId) : null;
-                    const contextName = ambulance ? ambulance.name : (alert.spaceId ? `Space ID: ${alert.spaceId}` : 'System');
+                    const contextName = ambulance ? ambulance.name : (alert.spaceId ? `Espacio ID: ${alert.spaceId}` : 'Sistema');
                     // TODO: Fetch space name if alert.spaceId exists for better display
 
                     return (
@@ -117,22 +126,22 @@ export default function AlertsPage() {
                         <TableCell>{contextName}</TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize
-                            ${alert.severity === 'high' ? 'bg-destructive text-destructive-foreground' : 
-                              alert.severity === 'medium' ? 'bg-orange-500 text-white' : 
+                            ${alert.severity === 'high' ? 'bg-destructive text-destructive-foreground' :
+                              alert.severity === 'medium' ? 'bg-orange-500 text-white' :
                               'bg-muted text-muted-foreground'}`}>
-                            {alert.severity}
+                            {severityText(alert.severity)}
                           </span>
                         </TableCell>
                         <TableCell>{format(parseISO(alert.createdAt), 'PPP')}</TableCell>
                         <TableCell className="text-right">
                           {alert.ambulanceId && (
                             <Button variant="outline" size="sm" asChild>
-                              <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>View Ambulance</Link>
+                              <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>Ver Ambulancia</Link>
                             </Button>
                           )}
                            {alert.type.startsWith('ampulario_') && alert.spaceId && (
                              <Button variant="outline" size="sm" asChild>
-                              <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>View Ampulario</Link>
+                              <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Ampulario</Link>
                             </Button>
                            )}
                         </TableCell>
@@ -145,8 +154,8 @@ export default function AlertsPage() {
           ) : (
             <div className="text-center py-10">
               <Info className="mx-auto h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-lg font-medium">All Clear!</p>
-              <p className="text-muted-foreground">There are no pending alerts at the moment.</p>
+              <p className="mt-4 text-lg font-medium">¡Todo en orden!</p>
+              <p className="text-muted-foreground">No hay alertas pendientes en este momento.</p>
             </div>
           )}
         </CardContent>

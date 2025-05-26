@@ -7,6 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { ConsumableMaterial, NonConsumableMaterial, Ambulance } from '@/types';
 import { FilePenLine, Trash2, PackagePlus, Upload } from 'lucide-react';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { MaterialForm } from './MaterialForm';
 import { useAppData } from '@/contexts/AppDataContext';
 import { ScrollArea } from '../ui/scroll-area';
@@ -49,15 +50,15 @@ export function InventoryTable<T extends ConsumableMaterial | NonConsumableMater
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-semibold">{materialType === 'consumable' ? 'Consumable' : 'Non-Consumable'} Materials</h3>
+        <h3 className="text-xl font-semibold">{materialType === 'consumable' ? 'Materiales Consumibles' : 'Materiales No Consumibles'}</h3>
         <div className="flex gap-2">
           {materialType === 'consumable' && (
-            <Button variant="outline" size="sm" disabled> {/* Mock button for CSV/Excel import */}
-              <Upload className="mr-2 h-4 w-4" /> Import CSV/Excel
+            <Button variant="outline" size="sm" disabled>
+              <Upload className="mr-2 h-4 w-4" /> Importar CSV/Excel
             </Button>
           )}
           <Button onClick={handleAddNew} size="sm">
-            <PackagePlus className="mr-2 h-4 w-4" /> Add New
+            <PackagePlus className="mr-2 h-4 w-4" /> Añadir Nuevo
           </Button>
         </div>
       </div>
@@ -68,7 +69,7 @@ export function InventoryTable<T extends ConsumableMaterial | NonConsumableMater
                 {columns.map((col) => (
                 <TableHead key={col.header}>{col.header}</TableHead>
                 ))}
-                <TableHead className="text-right w-[100px]">Actions</TableHead>
+                <TableHead className="text-right w-[100px]">Acciones</TableHead>
             </TableRow>
             </TableHeader>
             <TableBody>
@@ -80,24 +81,26 @@ export function InventoryTable<T extends ConsumableMaterial | NonConsumableMater
                 <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(material)} className="mr-1">
                     <FilePenLine className="h-4 w-4" />
+                    <span className="sr-only">Editar</span>
                     </Button>
                     <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80">
                         <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Eliminar</span>
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the material.
+                            Esta acción no se puede deshacer. Esto eliminará permanentemente el material.
                         </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={() => handleDelete(material.id)}>
-                            Delete
+                            Eliminar
                         </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
@@ -107,7 +110,7 @@ export function InventoryTable<T extends ConsumableMaterial | NonConsumableMater
             )) : (
                 <TableRow>
                     <TableCell colSpan={columns.length + 1} className="h-24 text-center">
-                        No {materialType} materials found.
+                        No se encontraron materiales {materialType === 'consumable' ? 'consumibles' : 'no consumibles'}.
                     </TableCell>
                 </TableRow>
             )}
@@ -127,14 +130,14 @@ export function InventoryTable<T extends ConsumableMaterial | NonConsumableMater
 }
 
 export const consumableColumns = [
-  { header: 'Name', accessor: (item: ConsumableMaterial) => item.name },
-  { header: 'Reference', accessor: (item: ConsumableMaterial) => item.reference },
-  { header: 'Quantity', accessor: (item: ConsumableMaterial) => item.quantity },
-  { header: 'Expiry Date', accessor: (item: ConsumableMaterial) => format(new Date(item.expiryDate), 'PPP') },
+  { header: 'Nombre', accessor: (item: ConsumableMaterial) => item.name },
+  { header: 'Referencia', accessor: (item: ConsumableMaterial) => item.reference },
+  { header: 'Cantidad', accessor: (item: ConsumableMaterial) => item.quantity },
+  { header: 'Fecha Caducidad', accessor: (item: ConsumableMaterial) => format(new Date(item.expiryDate), 'PPP', { locale: es }) },
 ];
 
 export const nonConsumableColumns = [
-  { header: 'Name', accessor: (item: NonConsumableMaterial) => item.name },
-  { header: 'Serial Number', accessor: (item: NonConsumableMaterial) => item.serialNumber },
-  { header: 'Status', accessor: (item: NonConsumableMaterial) => item.status },
+  { header: 'Nombre', accessor: (item: NonConsumableMaterial) => item.name },
+  { header: 'Número de Serie', accessor: (item: NonConsumableMaterial) => item.serialNumber },
+  { header: 'Estado', accessor: (item: NonConsumableMaterial) => item.status },
 ];

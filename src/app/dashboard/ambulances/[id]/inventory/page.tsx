@@ -21,8 +21,8 @@ export default function InventoryPage() {
   useEffect(() => {
     if (ambulance && (!ambulance.mechanicalReviewCompleted || !ambulance.cleaningCompleted)) {
       toast({
-        title: "Workflow Step Skipped",
-        description: "Please complete Mechanical Review and Cleaning before proceeding to Inventory.",
+        title: "Paso de Flujo Omitido",
+        description: "Por favor, completa la Revisión Mecánica y la Limpieza antes de proceder al Inventario.",
         variant: "destructive",
       });
       const targetPath = !ambulance.mechanicalReviewCompleted ? `/dashboard/ambulances/${id}/review` : `/dashboard/ambulances/${id}/cleaning`;
@@ -31,13 +31,13 @@ export default function InventoryPage() {
   }, [ambulance, id, router, toast]);
 
   if (!ambulance) {
-    return <p>Ambulance not found.</p>;
+    return <p>Ambulancia no encontrada.</p>;
   }
 
   if (!ambulance.mechanicalReviewCompleted || !ambulance.cleaningCompleted) {
     return <div className="p-6 text-center">
-        <p className="text-lg font-semibold">Previous Steps Required</p>
-        <p className="text-muted-foreground">Please complete mechanical review and cleaning for {ambulance.name} first.</p>
+        <p className="text-lg font-semibold">Pasos Previos Requeridos</p>
+        <p className="text-muted-foreground">Por favor, completa primero la revisión mecánica y la limpieza para {ambulance.name}.</p>
       </div>;
   }
 
@@ -47,8 +47,8 @@ export default function InventoryPage() {
   const handleCompleteInventory = () => {
     updateAmbulanceWorkflowStep(ambulance.id, 'inventory', true);
     toast({
-        title: "Inventory Check Complete",
-        description: `Inventory check for ${ambulance.name} marked as complete. The review cycle is now finished.`,
+        title: "Control de Inventario Completo",
+        description: `El control de inventario para ${ambulance.name} se ha marcado como completo. El ciclo de revisión ha finalizado.`,
     });
     router.push(`/dashboard/ambulances`);
   }
@@ -58,8 +58,8 @@ export default function InventoryPage() {
         <CardContent className="pt-6">
             <Tabs defaultValue="consumables">
                 <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="consumables">Consumables</TabsTrigger>
-                <TabsTrigger value="non-consumables">Non-Consumables</TabsTrigger>
+                <TabsTrigger value="consumables">Consumibles</TabsTrigger>
+                <TabsTrigger value="non-consumables">No Consumibles</TabsTrigger>
                 </TabsList>
                 <TabsContent value="consumables" className="mt-6">
                 <InventoryTable
@@ -80,7 +80,7 @@ export default function InventoryPage() {
             </Tabs>
         </CardContent>
         <CardFooter className="flex justify-end border-t pt-6">
-            <Button size="lg" onClick={handleCompleteInventory}>Mark Inventory as Complete & Finish Cycle</Button>
+            <Button size="lg" onClick={handleCompleteInventory}>Marcar Inventario como Completo y Finalizar Ciclo</Button>
         </CardFooter>
     </Card>
   );

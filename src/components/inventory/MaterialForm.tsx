@@ -17,19 +17,20 @@ import { useAppData } from '@/contexts/AppDataContext';
 import { cn } from '@/lib/utils';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 
 const consumableSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  reference: z.string().min(1, "Reference is required"),
-  quantity: z.coerce.number().min(0, "Quantity cannot be negative"),
-  expiryDate: z.date({ required_error: "Expiry date is required." }),
+  name: z.string().min(1, "El nombre es obligatorio"),
+  reference: z.string().min(1, "La referencia es obligatoria"),
+  quantity: z.coerce.number().min(0, "La cantidad no puede ser negativa"),
+  expiryDate: z.date({ required_error: "La fecha de caducidad es obligatoria." }),
 });
 
 const nonConsumableSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  serialNumber: z.string().min(1, "Serial number is required"),
-  status: z.enum(['Operational', 'Needs Repair', 'Out of Service']),
+  name: z.string().min(1, "El nombre es obligatorio"),
+  serialNumber: z.string().min(1, "El número de serie es obligatorio"),
+  status: z.enum(['Operacional', 'Necesita Reparación', 'Fuera de Servicio'], { errorMap: () => ({ message: "Debe seleccionar un estado."}) }),
 });
 
 interface MaterialFormProps {
@@ -43,7 +44,7 @@ interface MaterialFormProps {
 export function MaterialForm({ ambulance, materialType, material, isOpen, onOpenChange }: MaterialFormProps) {
   const { addConsumableMaterial, updateConsumableMaterial, addNonConsumableMaterial, updateNonConsumableMaterial } = useAppData();
   const { toast } = useToast();
-  
+
   const currentSchema = materialType === 'consumable' ? consumableSchema : nonConsumableSchema;
   type CurrentFormValues = z.infer<typeof currentSchema>;
 
@@ -66,14 +67,14 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
         form.reset(
           materialType === 'consumable'
             ? { name: '', reference: '', quantity: 0, expiryDate: new Date() }
-            : { name: '', serialNumber: '', status: 'Operational' }
+            : { name: '', serialNumber: '', status: 'Operacional' }
         );
       }
     }
   }, [material, materialType, form, isOpen]);
 
   const onSubmit = (data: CurrentFormValues) => {
-    const commonToastParams = { title: material ? "Material Updated" : "Material Added" };
+    const commonToastParams = { title: material ? "Material Actualizado" : "Material Añadido" };
     if (materialType === 'consumable') {
       const consumableData = data as z.infer<typeof consumableSchema>;
       if (material) {
@@ -81,7 +82,7 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
       } else {
         addConsumableMaterial({ ...consumableData, ambulanceId: ambulance.id, expiryDate: consumableData.expiryDate.toISOString() });
       }
-      toast({...commonToastParams, description: `${consumableData.name} (Consumable) processed.`});
+      toast({...commonToastParams, description: `${consumableData.name} (Consumible) procesado.`});
     } else {
       const nonConsumableData = data as z.infer<typeof nonConsumableSchema>;
       if (material) {
@@ -89,18 +90,24 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
       } else {
         addNonConsumableMaterial({ ...nonConsumableData, ambulanceId: ambulance.id });
       }
-      toast({...commonToastParams, description: `${nonConsumableData.name} (Non-Consumable) processed.`});
+      toast({...commonToastParams, description: `${nonConsumableData.name} (No Consumible) procesado.`});
     }
     onOpenChange(false);
   };
+
+  const nonConsumableStatusOptions = [
+    { value: 'Operacional', label: 'Operacional' },
+    { value: 'Necesita Reparación', label: 'Necesita Reparación' },
+    { value: 'Fuera de Servicio', label: 'Fuera de Servicio' },
+  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{material ? 'Edit' : 'Add'} {materialType === 'consumable' ? 'Consumable' : 'Non-Consumable'} Material</DialogTitle>
+          <DialogTitle>{material ? 'Editar' : 'Añadir'} Material {materialType === 'consumable' ? 'Consumible' : 'No Consumible'}</DialogTitle>
           <DialogDescription>
-            Fill in the details for the material.
+            Completa los detalles del material.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -110,8 +117,8 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
+                  <FormLabel>Nombre</FormLabel>
+                  <FormControl><Input placeholder="ej. Venda elástica" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -124,8 +131,8 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
                   name="reference"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Reference</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormLabel>Referencia</FormLabel>
+                      <FormControl><Input placeholder="ej. LOTE-123" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -135,8 +142,8 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
                   name="quantity"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Quantity</FormLabel>
-                      <FormControl><Input type="number" {...field} /></FormControl>
+                      <FormLabel>Cantidad</FormLabel>
+                      <FormControl><Input type="number" placeholder="ej. 10" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -146,7 +153,7 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
                   name="expiryDate"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Expiry Date</FormLabel>
+                      <FormLabel>Fecha de Caducidad</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -158,9 +165,9 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
                               )}
                             >
                               {field.value ? (
-                                format(field.value, "PPP")
+                                format(field.value, "PPP", { locale: es })
                               ) : (
-                                <span>Pick a date</span>
+                                <span>Elige una fecha</span>
                               )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -173,6 +180,7 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
                             onSelect={field.onChange}
                             disabled={(date) => date < new Date("1900-01-01")}
                             initialFocus
+                            locale={es}
                           />
                         </PopoverContent>
                       </Popover>
@@ -190,8 +198,8 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
                   name="serialNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Serial Number</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormLabel>Número de Serie</FormLabel>
+                      <FormControl><Input placeholder="ej. SN-XYZ789" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -201,17 +209,17 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Status</FormLabel>
+                      <FormLabel>Estado</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Seleccionar estado" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Operational">Operational</SelectItem>
-                          <SelectItem value="Needs Repair">Needs Repair</SelectItem>
-                          <SelectItem value="Out of Service">Out of Service</SelectItem>
+                          {nonConsumableStatusOptions.map(option => (
+                             <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -222,9 +230,9 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
             )}
             <DialogFooter className="pt-4">
               <DialogClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button type="button" variant="outline">Cancelar</Button>
               </DialogClose>
-              <Button type="submit">{material ? 'Save Changes' : 'Add Material'}</Button>
+              <Button type="submit">{material ? 'Guardar Cambios' : 'Añadir Material'}</Button>
             </DialogFooter>
           </form>
         </Form>
@@ -232,4 +240,3 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
     </Dialog>
   );
 }
-

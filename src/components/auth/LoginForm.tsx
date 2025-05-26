@@ -25,37 +25,37 @@ export default function LoginForm() {
         <div className="flex justify-center items-center mb-4">
           <Ambulance className="h-12 w-12 text-primary" />
         </div>
-        <CardTitle className="text-2xl font-bold">AmbuReview Login</CardTitle>
-        <CardDescription>Enter your credentials to access the system.</CardDescription>
+        <CardTitle className="text-2xl font-bold">Acceso AmbuReview</CardTitle>
+        <CardDescription>Introduce tus credenciales para acceder al sistema.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Username</Label>
-            <Input 
-              id="name" 
-              placeholder="e.g. Dr. Smith" 
-              required 
+            <Label htmlFor="name">Usuario</Label>
+            <Input
+              id="name"
+              placeholder="ej. Dr. García"
+              required
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input 
-              id="password" 
-              type="password" 
-              required 
+            <Label htmlFor="password">Contraseña</Label>
+            <Input
+              id="password"
+              type="password"
+              required
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button type="submit" className="w-full">Login</Button>
+          <Button type="submit" className="w-full">Iniciar Sesión</Button>
         </form>
       </CardContent>
       <CardFooter className="text-center text-sm">
-        <p>Use any mock username. Password field is for UI demonstration.</p>
+        <p>Usa cualquier nombre de usuario. El campo de contraseña es para demostración.</p>
       </CardFooter>
     </Card>
   );

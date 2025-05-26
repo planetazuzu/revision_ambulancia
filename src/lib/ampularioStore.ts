@@ -5,7 +5,7 @@ import { formatISO, addDays, subDays } from 'date-fns';
 // --- Spaces ---
 let spaces: Space[] = [
   { id: 'space23', name: 'Ampulario Principal' },
-  { id: 'space01', name: 'Ambulancia 01 Stock Local' },
+  { id: 'space01', name: 'Stock Local Ambulancia 01' }, // Example of another space
 ];
 
 export const getSpaces = (): Space[] => spaces;
@@ -19,8 +19,8 @@ export const addSpace = (space: Omit<Space, 'id'>): Space => {
 // --- Ampulario Materials ---
 let ampularioMaterials: AmpularioMaterial[] = [
   { id: 'ampmat001', space_id: 'space23', name: 'Adrenalina 1mg/1ml', dose: '1', unit: 'mg/ml', quantity: 10, route: 'IV/IM', expiry_date: formatISO(addDays(new Date(), 90)), created_at: formatISO(new Date()), updated_at: formatISO(new Date()) },
-  { id: 'ampmat002', space_id: 'space23', name: 'Salbutamol Nebulizador', dose: '5', unit: 'mg/ml', quantity: 5, route: 'Nebulizador', expiry_date: formatISO(addDays(new Date(), 2)), created_at: formatISO(new Date()), updated_at: formatISO(new Date()) }, // Expiring soon
-  { id: 'ampmat003', space_id: 'space23', name: 'Paracetamol Comprimidos', dose: '500', unit: 'mg', quantity: 100, route: 'Oral', expiry_date: formatISO(subDays(new Date(), 5)), created_at: formatISO(new Date()), updated_at: formatISO(new Date()) }, // Expired
+  { id: 'ampmat002', space_id: 'space23', name: 'Salbutamol Nebulizador', dose: '5', unit: 'mg/ml', quantity: 5, route: 'Nebulizador', expiry_date: formatISO(addDays(new Date(), 2)), created_at: formatISO(new Date()), updated_at: formatISO(new Date()) },
+  { id: 'ampmat003', space_id: 'space23', name: 'Paracetamol Comprimidos', dose: '500', unit: 'mg', quantity: 100, route: 'Oral', expiry_date: formatISO(subDays(new Date(), 5)), created_at: formatISO(new Date()), updated_at: formatISO(new Date()) },
   { id: 'ampmat004', space_id: 'space01', name: 'Morfina 10mg/ml', dose: '10', unit: 'mg/ml', quantity: 2, route: 'IV/IM', expiry_date: formatISO(addDays(new Date(), 180)), created_at: formatISO(new Date()), updated_at: formatISO(new Date()) },
 ];
 
@@ -35,7 +35,7 @@ export const getAmpularioMaterials = (filters: { spaceId?: string; routeName?: M
   if (filters.nameQuery) {
     filtered = filtered.filter(m => m.name.toLowerCase().includes(filters.nameQuery!.toLowerCase()));
   }
-  return filtered.sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  return filtered.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); // Sort by most recent first
 };
 
 export const getAmpularioMaterialById = (id: string): AmpularioMaterial | undefined => ampularioMaterials.find(m => m.id === id);
@@ -64,7 +64,7 @@ export const addMultipleAmpularioMaterials = (materialsData: Omit<AmpularioMater
 export const updateAmpularioMaterial = (id: string, updates: Partial<Pick<AmpularioMaterial, 'quantity' | 'expiry_date' | 'name' | 'dose' | 'unit' | 'route' | 'space_id'>>): AmpularioMaterial | undefined => {
   const materialIndex = ampularioMaterials.findIndex(m => m.id === id);
   if (materialIndex === -1) return undefined;
-  
+
   const updatedMaterial = {
     ...ampularioMaterials[materialIndex],
     ...updates,
