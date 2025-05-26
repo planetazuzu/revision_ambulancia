@@ -23,17 +23,19 @@ Actualmente, esta aplicación utiliza una **capa de datos de demostración (mock
     2. Registro de Limpieza
     3. Control de Inventario (suministros a bordo)
 - **Ampulario (Inventario Central)**:
-    - Gestionar un stock central de suministros médicos.
-    - Importar suministros mediante CSV.
+    - Gestionar un stock central de suministros médicos y espacios de almacenamiento.
+    - Importar suministros mediante CSV a un espacio específico.
     - Rastrear fechas de caducidad.
 - Alertas del Sistema (en la aplicación):
     - Tareas pendientes de ambulancias.
     - Alertas de caducidad para suministros a bordo de ambulancias.
     - Alertas de caducidad para suministros del Ampulario.
 
-## Endpoints API (para Ampulario)
+## Endpoints API
 
-Los siguientes endpoints API están disponibles para gestionar los materiales del Ampulario:
+Los siguientes endpoints API están disponibles:
+
+### Ampulario y Materiales
 
 - **`POST /api/ampulario/import`**
     - Descripción: Importa materiales desde un archivo CSV a un espacio específico en el Ampulario.
@@ -86,6 +88,30 @@ Los siguientes endpoints API están disponibles para gestionar los materiales de
     - `spaceId` (string, opcional): Filtrar alertas para un espacio específico. Si se omite, devuelve alertas para todos los espacios.
     - Respuesta: Array de objetos `Alert` relacionados con la caducidad de materiales del Ampulario.
 
+### Espacios del Ampulario
+
+- **`GET /api/spaces`**
+    - Descripción: Obtiene una lista de todos los espacios de almacenamiento del Ampulario.
+    - Respuesta: Array de objetos `Space`.
+
+- **`POST /api/spaces`**
+    - Descripción: Crea un nuevo espacio de almacenamiento.
+    - Cuerpo de la Solicitud (JSON): `{ "name": "Nombre del Espacio" }`.
+    - Respuesta: El objeto `Space` creado.
+
+- **`GET /api/spaces/[id]`**
+    - Descripción: Obtiene un espacio específico por su ID.
+    - Respuesta: El objeto `Space` o 404 si no se encuentra.
+
+- **`PUT /api/spaces/[id]`**
+    - Descripción: Actualiza un espacio existente.
+    - Cuerpo de la Solicitud (JSON): `{ "name": "Nuevo Nombre del Espacio" }`.
+    - Respuesta: El objeto `Space` actualizado o 404 si no se encuentra.
+
+- **`DELETE /api/spaces/[id]`**
+    - Descripción: Elimina un espacio por su ID. Solo se puede eliminar si no está en uso por ningún material.
+    - Respuesta: Mensaje de éxito o error si no se encuentra o está en uso.
+
 ## Desarrollo Futuro
 
-Para una aplicación de producción, la capa de datos de demostración y el almacén en memoria se reemplazarían con una base de datos persistente (ej., PostgreSQL, Firestore) y los servicios de backend correspondientes. Los trabajos cron para alertas se configurarían utilizando un programador de tareas.
+Para una aplicación de producción, la capa de datos de demostración y el almacén en memoria se reemplazarían con una base de datos persistente (ej., PostgreSQL, Firestore) y los servicios de backend correspondientes. Los trabajos cron para alertas se configurarían utilizando un programador de tareas. Una interfaz de usuario para gestionar los espacios del Ampulario también sería una adición útil.

@@ -9,12 +9,40 @@ let spaces: Space[] = [
 ];
 
 export const getSpaces = (): Space[] => spaces;
+
 export const getSpaceById = (id: string): Space | undefined => spaces.find(s => s.id === id);
-export const addSpace = (space: Omit<Space, 'id'>): Space => {
-  const newSpace: Space = { ...space, id: `space-${Date.now()}` };
+
+export const addSpace = (spaceData: Omit<Space, 'id'>): Space => {
+  const newSpace: Space = { ...spaceData, id: `space-${Date.now()}-${Math.random().toString(36).substring(7)}` };
   spaces.push(newSpace);
   return newSpace;
 };
+
+export const updateSpace = (id: string, updates: Partial<Omit<Space, 'id'>>): Space | undefined => {
+  const spaceIndex = spaces.findIndex(s => s.id === id);
+  if (spaceIndex === -1) return undefined;
+
+  const updatedSpace = {
+    ...spaces[spaceIndex],
+    ...updates,
+  };
+  spaces[spaceIndex] = updatedSpace;
+  return updatedSpace;
+};
+
+export const deleteSpace = (id: string): boolean => {
+  const initialLength = spaces.length;
+  // Prevent deleting a space if it's currently associated with materials
+  const isSpaceInUse = ampularioMaterials.some(material => material.space_id === id);
+  if (isSpaceInUse) {
+    // Optionally, throw an error or return a specific indicator
+    console.warn(`Attempted to delete space ${id} which is still in use by materials.`);
+    return false; // Or throw new Error('Space is in use and cannot be deleted');
+  }
+  spaces = spaces.filter(s => s.id !== id);
+  return spaces.length < initialLength;
+};
+
 
 // --- Ampulario Materials ---
 let ampularioMaterials: AmpularioMaterial[] = [
@@ -64,6 +92,11 @@ export const addMultipleAmpularioMaterials = (materialsData: Omit<AmpularioMater
 export const updateAmpularioMaterial = (id: string, updates: Partial<Pick<AmpularioMaterial, 'quantity' | 'expiry_date' | 'name' | 'dose' | 'unit' | 'route' | 'space_id'>>): AmpularioMaterial | undefined => {
   const materialIndex = ampularioMaterials.findIndex(m => m.id === id);
   if (materialIndex === -1) return undefined;
+
+  // Ensure space_id exists if it's being updated
+  if (updates.space_id && !getSpaceById(updates.space_id)) {
+    throw new Error(`El espacio con ID '${updates.space_id}' no existe.`);
+  }
 
   const updatedMaterial = {
     ...ampularioMaterials[materialIndex],
