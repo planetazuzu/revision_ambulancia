@@ -1,9 +1,11 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label"; // Added import for ShadCN Label
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -45,8 +47,6 @@ export default function AmpularioPage() {
     // This is a placeholder if we were to fetch spaces.
     // For now, we'll assume the initial spaces from the store are sufficient.
     // We'll add a function to fetch them if needed, but for now, they are part of the server-side store.
-    // Let's assume we have a way to get a list of spaces, or at least the default.
-    // For now, using what's in ampularioStore via a new API endpoint if necessary or passing as prop.
     // Simplified: just setting one space for now for the dropdown.
     // In a real scenario, you'd fetch a list of available spaces.
     // For now, this is a limitation of the mock setup.
@@ -166,7 +166,7 @@ export default function AmpularioPage() {
         </CardHeader>
         <CardContent className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-                <Label htmlFor="search-material">Search by Name</Label>
+                <Label htmlFor="search-material" className="block text-sm font-medium text-muted-foreground mb-1">Search by Name</Label>
                 <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -180,7 +180,7 @@ export default function AmpularioPage() {
                 </div>
             </div>
             <div className="flex-1 sm:flex-initial sm:w-1/3">
-                <Label htmlFor="filter-space">Space</Label>
+                <Label htmlFor="filter-space" className="block text-sm font-medium text-muted-foreground mb-1">Space</Label>
                  <Select value={selectedSpaceId} onValueChange={setSelectedSpaceId}>
                     <SelectTrigger id="filter-space">
                         <SelectValue placeholder="Select space" />
@@ -193,7 +193,7 @@ export default function AmpularioPage() {
                 </Select>
             </div>
              <div className="flex-1 sm:flex-initial sm:w-1/3">
-                <Label htmlFor="filter-route">Route</Label>
+                <Label htmlFor="filter-route" className="block text-sm font-medium text-muted-foreground mb-1">Route</Label>
                 <Select value={filterRoute} onValueChange={(value) => setFilterRoute(value as MaterialRoute | 'all')}>
                     <SelectTrigger id="filter-route">
                         <SelectValue placeholder="Filter by route" />
@@ -315,10 +315,4 @@ export default function AmpularioPage() {
     </div>
   );
 }
-
-// Add Label component if not globally available, or import from ui
-const Label = ({ htmlFor, children, className }: { htmlFor: string, children: React.ReactNode, className?: string }) => (
-  <label htmlFor={htmlFor} className={cn("block text-sm font-medium text-muted-foreground mb-1", className)}>
-    {children}
-  </label>
-);
+// Removed local Label component definition, will use imported ShadCN Label
