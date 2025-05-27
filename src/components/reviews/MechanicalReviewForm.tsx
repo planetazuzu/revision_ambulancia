@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -20,7 +21,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 const checklistItemSchema = z.object({
-  id: z.string(),
+  id: z.string(), // ID para la gestión interna de los ítems
   name: z.string().min(1, "El nombre del ítem es obligatorio."),
   status: z.enum(['OK', 'Reparar', 'N/A'], { errorMap: () => ({ message: "Debe seleccionar un estado." }) }),
   notes: z.string().optional(),
@@ -32,7 +33,7 @@ const mechanicalReviewSchema = z.object({
 
 type MechanicalReviewFormValues = z.infer<typeof mechanicalReviewSchema>;
 
-const defaultChecklistItems: Omit<ChecklistItem, 'id' | 'status' | 'notes'>[] = [
+const defaultChecklistItemsData: Omit<ChecklistItem, 'id' | 'status' | 'notes'>[] = [
   { name: 'Frenos (Pastillas, Discos, Líquido)' },
   { name: 'Neumáticos (Presión, Dibujo, Daños)' },
   { name: 'Luces (Delanteras, Traseras, Intermitentes, Emergencia)' },
@@ -59,17 +60,14 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  const existingReview = getMechanicalReviewByAmbulanceId(ambulance.id);
+  
+  // existingReview se obtiene una vez basado en ambulance.id
+  const existingReview = useMemo(() => getMechanicalReviewByAmbulanceId(ambulance.id), [getMechanicalReviewByAmbulanceId, ambulance.id]);
 
   const form = useForm<MechanicalReviewFormValues>({
     resolver: zodResolver(mechanicalReviewSchema),
     defaultValues: {
-      items: existingReview?.items || defaultChecklistItems.map((item, index) => ({
-        id: `item-${Date.now()}-${index}`,
-        name: item.name,
-        status: 'N/A' as ChecklistItemStatus,
-        notes: '',
-      })),
+      items: [], // Iniciar con array vacío, useEffect se encargará de poblarlo
     },
   });
 
@@ -79,19 +77,16 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
   });
 
   useEffect(() => {
-    if (existingReview) {
-      form.reset({ items: existingReview.items.map(item => ({...item, status: item.status as ChecklistItemStatus})) });
-    } else {
-       form.reset({
-        items: defaultChecklistItems.map((item, index) => ({
-            id: `item-${Date.now()}-${index}`,
-            name: item.name,
-            status: 'N/A' as ChecklistItemStatus,
-            notes: '',
-        }))
-       });
-    }
-  }, [existingReview, form]);
+    const initialItems = existingReview
+      ? existingReview.items.map(item => ({...item, status: item.status as ChecklistItemStatus}))
+      : defaultChecklistItemsData.map((item, index) => ({
+          id: `default-${ambulance.id}-${index}-${item.name.replace(/\s+/g, '-').toLowerCase()}`, // ID más estable y único
+          name: item.name,
+          status: 'N/A' as ChecklistItemStatus,
+          notes: '',
+        }));
+    form.reset({ items: initialItems });
+  }, [existingReview, form.reset, ambulance.id]); // Depender de existingReview y form.reset (que es estable) y ambulance.id
 
   const onSubmit = (data: MechanicalReviewFormValues) => {
     if (!user) {
@@ -111,7 +106,8 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
   };
 
   const handleAddItem = () => {
-    append({ id: `custom-item-${Date.now()}`, name: '', status: 'N/A', notes: '' });
+    // Usar un ID único y temporal para el nuevo ítem personalizado
+    append({ id: `custom-item-${Date.now()}-${fields.length}`, name: '', status: 'N/A', notes: '' });
   };
 
   const statusOptions: { value: ChecklistItemStatus; label: string }[] = [
@@ -119,6 +115,8 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
     { value: 'Reparar', label: 'Reparar' },
     { value: 'N/A', label: 'N/A' },
   ];
+
+  // console.log("Rendering MechanicalReviewForm. Fields:", fields); // Para depuración si es necesario
 
   return (
     <Card className="shadow-lg">
@@ -128,16 +126,19 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[500px] pr-4">
+            <ScrollArea className="h-[calc(100vh-26rem)] md:h-[500px] pr-4"> {/* Altura ajustada y responsiva */}
               <div className="space-y-6">
                 {fields.map((field, index) => (
-                  <Card key={field.id} className="p-4 bg-card/50">
+                  <Card key={field.id} className="p-4 bg-card/50"> {/* field.id es el ID estable de useFieldArray */}
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-4 items-start">
                       <FormField
                         control={form.control}
                         name={`items.${index}.name`}
                         render={({ field: nameField }) => (
-                           defaultChecklistItems.some(item => item.name === form.getValues(`items.${index}.name`)) ?
+                           // Comprobar si el ítem es uno de los predeterminados (por su nombre)
+                           // para decidir si el nombre es editable o solo una etiqueta.
+                           // Esto asume que los nombres de los ítems predeterminados son únicos y no cambian.
+                           defaultChecklistItemsData.some(defaultItem => defaultItem.name === form.getValues(`items.${index}.name`)) ?
                            <Label className="font-semibold text-md pt-2 col-span-1 md:col-span-3">{nameField.value}</Label> :
                            <Input {...nameField} placeholder="Nombre ítem personalizado" className="font-semibold text-md"/>
                         )}
@@ -151,14 +152,14 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
                                 <RadioGroup
                                     onValueChange={statusField.onChange}
                                     value={statusField.value}
-                                    className="flex flex-col sm:flex-row gap-4"
+                                    className="flex flex-col sm:flex-row gap-2 sm:gap-4" // Ajuste de gap
                                 >
                                     {statusOptions.map((statusOpt) => (
                                     <Label
                                         key={statusOpt.value}
-                                        htmlFor={`${field.id}-${statusOpt.value}`}
+                                        htmlFor={`${field.id}-${statusOpt.value}`} // Usar field.id para el htmlFor y el id del RadioGroupItem
                                         className={cn(
-                                        "flex items-center space-x-2 cursor-pointer rounded-md border p-3 transition-colors hover:bg-accent hover:text-accent-foreground",
+                                        "flex items-center space-x-2 cursor-pointer rounded-md border p-3 transition-colors hover:bg-accent hover:text-accent-foreground flex-1 min-w-[80px] justify-center sm:min-w-0", // Clases para responsividad y estilo
                                         statusField.value === statusOpt.value && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
                                         )}
                                     >
@@ -167,7 +168,7 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
                                     </Label>
                                     ))}
                                 </RadioGroup>
-                                <FormMessage>{form.formState.errors.items?.[index]?.status?.message}</FormMessage>
+                                {form.formState.errors.items?.[index]?.status?.message && <FormMessage>{form.formState.errors.items?.[index]?.status?.message}</FormMessage>}
                                 </>
                             )}
                         />
@@ -192,7 +193,8 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
                             />
                         </div>
                       )}
-                      {!defaultChecklistItems.some(item => item.name === form.getValues(`items.${index}.name`)) && (
+                      {/* Lógica para permitir eliminar solo ítems personalizados */}
+                      {!defaultChecklistItemsData.some(defaultItem => defaultItem.name === form.getValues(`items.${index}.name`)) && (
                          <div className="col-span-1 md:col-span-3 flex justify-end mt-2">
                             <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)} className="text-destructive hover:text-destructive/80">
                                 <Trash2 className="h-4 w-4 mr-1" /> Eliminar Ítem
@@ -204,11 +206,15 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
                 ))}
               </div>
             </ScrollArea>
-            <Button type="button" variant="outline" onClick={handleAddItem} className="mt-6">
-                <PlusCircle className="h-4 w-4 mr-2" /> Añadir Ítem Personalizado
-            </Button>
+            <div className="mt-6 flex justify-start"> {/* Botón de añadir a la izquierda */}
+                <Button type="button" variant="outline" onClick={handleAddItem}>
+                    <PlusCircle className="h-4 w-4 mr-2" /> Añadir Ítem Personalizado
+                </Button>
+            </div>
             <CardFooter className="mt-8 p-0 pt-6 flex justify-end">
-              <Button type="submit" size="lg">Guardar Revisión y Continuar</Button>
+              <Button type="submit" size="lg" disabled={form.formState.isSubmitting || !form.formState.isDirty && fields.length === 0}>
+                {form.formState.isSubmitting ? "Guardando..." : "Guardar Revisión y Continuar"}
+              </Button>
             </CardFooter>
           </form>
         </Form>
@@ -216,3 +222,5 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
     </Card>
   );
 }
+
+    
