@@ -2,7 +2,7 @@
 
 "use client";
 
-import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, DailyVehicleCheck } from '@/types';
+import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo } from '@/types';
 import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale'; 
@@ -43,9 +43,9 @@ interface AppDataContextType {
   updateAmbulanceWorkflowStep: (ambulanceId: string, step: 'mechanical' | 'cleaning' | 'inventory', status: boolean) => void;
   getAllAmbulancesCount: () => number;
 
-  dailyVehicleChecks: DailyVehicleCheck[];
-  getDailyVehicleCheckByAmbulanceId: (ambulanceId: string) => DailyVehicleCheck | undefined; // Assuming one latest per ambulance for simplicity
-  saveDailyVehicleCheck: (check: Omit<DailyVehicleCheck, 'id'>) => void;
+  revisionesDiariasVehiculo: RevisionDiariaVehiculo[];
+  getRevisionDiariaVehiculoByAmbulanceId: (ambulanceId: string) => RevisionDiariaVehiculo | undefined;
+  saveRevisionDiariaVehiculo: (check: Omit<RevisionDiariaVehiculo, 'id'>) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -77,7 +77,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [consumableMaterials, setConsumableMaterials] = useState<ConsumableMaterial[]>(initialConsumables);
   const [nonConsumableMaterials, setNonConsumableMaterials] = useState<NonConsumableMaterial[]>(initialNonConsumables);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [dailyVehicleChecks, setDailyVehicleChecks] = useState<DailyVehicleCheck[]>([]);
+  const [revisionesDiariasVehiculo, setRevisionesDiariasVehiculo] = useState<RevisionDiariaVehiculo[]>([]);
 
   const accessibleAmbulances = useMemo(() => {
     if (authLoading || !user) return [];
@@ -157,7 +157,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCleaningLogs(prev => prev.filter(cl => cl.ambulanceId !== id));
     setConsumableMaterials(prev => prev.filter(cm => cm.ambulanceId !== id));
     setNonConsumableMaterials(prev => prev.filter(ncm => ncm.ambulanceId !== id));
-    setDailyVehicleChecks(prev => prev.filter(dvc => dvc.ambulanceId !== id));
+    setRevisionesDiariasVehiculo(prev => prev.filter(dvc => dvc.ambulanceId !== id));
   };
 
   const getMechanicalReviewByAmbulanceId = (ambulanceId: string) => {
@@ -302,41 +302,41 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  // --- Daily Vehicle Checks ---
-  const getDailyVehicleCheckByAmbulanceId = (ambulanceId: string): DailyVehicleCheck | undefined => {
+  // --- Revisiones Diarias de Vehículo ---
+  const getRevisionDiariaVehiculoByAmbulanceId = (ambulanceId: string): RevisionDiariaVehiculo | undefined => {
     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
       return undefined;
     }
     // For simplicity, return the latest check for an ambulance. Could be a list.
-    const checksForAmbulance = dailyVehicleChecks.filter(c => c.ambulanceId === ambulanceId);
+    const checksForAmbulance = revisionesDiariasVehiculo.filter(c => c.ambulanceId === ambulanceId);
     return checksForAmbulance.sort((a, b) => new Date(b.checkDate).getTime() - new Date(a.checkDate).getTime())[0];
   };
 
-  const saveDailyVehicleCheck = (checkData: Omit<DailyVehicleCheck, 'id'>) => {
+  const saveRevisionDiariaVehiculo = (checkData: Omit<RevisionDiariaVehiculo, 'id'>) => {
     if (!user) {
-        console.warn("Usuario no autenticado intentando guardar control diario.");
+        console.warn("Usuario no autenticado intentando guardar revisión diaria.");
         return;
     }
     if (user.role !== 'coordinador' && (user.role === 'usuario' && user.assignedAmbulanceId !== checkData.ambulanceId)) {
-       console.warn("Intento no autorizado de guardar control diario.");
+       console.warn("Intento no autorizado de guardar revisión diaria.");
        return;
     }
-    const existingCheckIndex = dailyVehicleChecks.findIndex(c => c.ambulanceId === checkData.ambulanceId && c.checkDate.startsWith(checkData.checkDate.substring(0,10))); // Check if one exists for the same day
+    const existingCheckIndex = revisionesDiariasVehiculo.findIndex(c => c.ambulanceId === checkData.ambulanceId && c.checkDate.startsWith(checkData.checkDate.substring(0,10))); // Check if one exists for the same day
 
-    const newCheck: DailyVehicleCheck = {
+    const newCheck: RevisionDiariaVehiculo = {
       ...checkData,
-      id: `dvc-${Date.now()}`,
+      id: `rdv-${Date.now()}`, // Prefijo cambiado a rdv
       submittedByUserId: user.id,
     };
 
     if (existingCheckIndex > -1) {
-      setDailyVehicleChecks(prev => {
+      setRevisionesDiariasVehiculo(prev => {
         const updatedChecks = [...prev];
         updatedChecks[existingCheckIndex] = newCheck; // Replace existing check for the day
         return updatedChecks;
       });
     } else {
-      setDailyVehicleChecks(prev => [newCheck, ...prev]);
+      setRevisionesDiariasVehiculo(prev => [newCheck, ...prev]);
     }
   };
 
@@ -427,7 +427,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     alerts, generateAlerts,
     updateAmbulanceWorkflowStep,
     getAllAmbulancesCount,
-    dailyVehicleChecks, getDailyVehicleCheckByAmbulanceId, saveDailyVehicleCheck,
+    revisionesDiariasVehiculo, getRevisionDiariaVehiculoByAmbulanceId, saveRevisionDiariaVehiculo,
   };
 
   return (
@@ -444,3 +444,4 @@ export function useAppData() {
   }
   return context;
 }
+

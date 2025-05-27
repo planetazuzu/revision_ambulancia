@@ -3,12 +3,12 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useAppData } from '@/contexts/AppDataContext';
-import { DailyVehicleCheckForm } from '@/components/checks/DailyVehicleCheckForm';
+import { RevisionDiariaVehiculoForm } from '@/components/checks/DailyVehicleCheckForm'; // El nombre del archivo no cambia aquí, pero el componente sí
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
-export default function DailyCheckPage() {
+export default function RevisionDiariaPage() { // Nombre de la función de página cambiado
   const params = useParams();
   const router = useRouter();
   const { getAmbulanceById } = useAppData();
@@ -32,7 +32,7 @@ export default function DailyCheckPage() {
         <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/ambulances/${id}/review`)} className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver a {ambulance.name}
         </Button>
-      <DailyVehicleCheckForm ambulance={ambulance} />
+      <RevisionDiariaVehiculoForm ambulance={ambulance} />
     </div>
   );
 }

@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import type { Ambulance, DailyVehicleCheck, FuelLevel, TyrePressureStatus, SimplePresenceStatus, EquipmentStatus, YesNoStatus } from '@/types';
+import type { Ambulance, RevisionDiariaVehiculo, FuelLevel, TyrePressureStatus, SimplePresenceStatus, EquipmentStatus, YesNoStatus } from '@/types';
 import { useAppData } from '@/contexts/AppDataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,10 +30,10 @@ const exteriorCornerCheckSchema = z.object({
   photoTaken: z.boolean().optional().default(false),
 });
 
-const dailyVehicleCheckSchema = z.object({
+const revisionDiariaVehiculoSchema = z.object({
   driverFirstName: z.string().min(1, "El nombre del conductor es obligatorio."),
   driverLastName: z.string().min(1, "Los apellidos del conductor son obligatorios."),
-  checkDate: z.date({ required_error: "La fecha de control es obligatoria." }),
+  checkDate: z.date({ required_error: "La fecha de la revisión es obligatoria." }),
   ambulanceNumber: z.string(), // Se llenará automáticamente
   paxBagNumber: z.string().min(1, "El número de bolsa PAX es obligatorio."),
   paxFolderPresent: z.enum(['Sí', 'No'], { errorMap: () => ({ message: "Seleccione si la carpeta PAX está presente." }) }),
@@ -54,7 +54,7 @@ const dailyVehicleCheckSchema = z.object({
   additionalNotes: z.string().optional(),
 });
 
-type DailyVehicleCheckFormValues = z.infer<typeof dailyVehicleCheckSchema>;
+type RevisionDiariaVehiculoFormValues = z.infer<typeof revisionDiariaVehiculoSchema>;
 
 const fuelLevelOptions: { value: FuelLevel; label: string }[] = [
   { value: 'Lleno', label: 'Lleno' }, { value: '3/4', label: '3/4' }, { value: '1/2', label: '1/2' },
@@ -74,20 +74,20 @@ const yesNoOptions: { value: YesNoStatus; label: string }[] = [
 ];
 
 
-interface DailyVehicleCheckFormProps {
+interface RevisionDiariaVehiculoFormProps {
   ambulance: Ambulance;
 }
 
-export function DailyVehicleCheckForm({ ambulance }: DailyVehicleCheckFormProps) {
-  const { saveDailyVehicleCheck, getDailyVehicleCheckByAmbulanceId } = useAppData();
+export function RevisionDiariaVehiculoForm({ ambulance }: RevisionDiariaVehiculoFormProps) {
+  const { saveRevisionDiariaVehiculo, getRevisionDiariaVehiculoByAmbulanceId } = useAppData();
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  const existingCheck = useMemo(() => getDailyVehicleCheckByAmbulanceId(ambulance.id), [getDailyVehicleCheckByAmbulanceId, ambulance.id]);
+  const existingCheck = useMemo(() => getRevisionDiariaVehiculoByAmbulanceId(ambulance.id), [getRevisionDiariaVehiculoByAmbulanceId, ambulance.id]);
 
-  const form = useForm<DailyVehicleCheckFormValues>({
-    resolver: zodResolver(dailyVehicleCheckSchema),
+  const form = useForm<RevisionDiariaVehiculoFormValues>({
+    resolver: zodResolver(revisionDiariaVehiculoSchema),
     defaultValues: {
       driverFirstName: user?.name?.split(' ')[0] || '',
       driverLastName: user?.name?.split(' ').slice(1).join(' ') || '',
@@ -141,24 +141,24 @@ export function DailyVehicleCheckForm({ ambulance }: DailyVehicleCheckFormProps)
     }
   }, [existingCheck, form, ambulance.name, user?.name]);
 
-  const onSubmit = (data: DailyVehicleCheckFormValues) => {
+  const onSubmit = (data: RevisionDiariaVehiculoFormValues) => {
     if (!user) {
       toast({ title: "Error de Autenticación", description: "Debes iniciar sesión.", variant: "destructive" });
       return;
     }
-    const checkDataToSave: Omit<DailyVehicleCheck, 'id' | 'submittedByUserId'> = {
+    const checkDataToSave: Omit<RevisionDiariaVehiculo, 'id' | 'submittedByUserId'> = {
       ...data,
       ambulanceId: ambulance.id,
       checkDate: format(data.checkDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), // Ensure ISO format
     };
     
-    saveDailyVehicleCheck({ ...checkDataToSave, submittedByUserId: user.id });
-    toast({ title: "Control Guardado", description: `El control diario para ${ambulance.name} ha sido guardado.` });
+    saveRevisionDiariaVehiculo({ ...checkDataToSave, submittedByUserId: user.id });
+    toast({ title: "Revisión Guardada", description: `La revisión diaria para ${ambulance.name} ha sido guardada.` });
     // Potentially navigate or give feedback
     // router.push(`/dashboard/ambulances/${ambulance.id}`); // Example navigation
   };
   
-  const handleTakePhoto = (corner: keyof Pick<DailyVehicleCheckFormValues, 'exteriorFrontRight' | 'exteriorFrontLeft' | 'exteriorRearRight' | 'exteriorRearLeft'>) => {
+  const handleTakePhoto = (corner: keyof Pick<RevisionDiariaVehiculoFormValues, 'exteriorFrontRight' | 'exteriorFrontLeft' | 'exteriorRearRight' | 'exteriorRearLeft'>) => {
     // Placeholder for camera functionality
     console.log(`Tomar foto para ${corner}`);
     form.setValue(`${corner}.photoTaken`, true); // Simulate photo taken
@@ -169,7 +169,7 @@ export function DailyVehicleCheckForm({ ambulance }: DailyVehicleCheckFormProps)
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle>Control Diario de Vehículo para {ambulance.name}</CardTitle>
+        <CardTitle>Revisión Diaria de Vehículo para {ambulance.name}</CardTitle>
         <CardDescription>Complete todos los campos relevantes para el inicio de turno.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -199,7 +199,7 @@ export function DailyVehicleCheckForm({ ambulance }: DailyVehicleCheckFormProps)
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="checkDate" render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Fecha del Control</FormLabel>
+                        <FormLabel>Fecha de la Revisión</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -309,13 +309,13 @@ export function DailyVehicleCheckForm({ ambulance }: DailyVehicleCheckFormProps)
                     )} />
 
                     {[
-                        {name: 'ambulanceRegistrationPresent', label: 'Registro de Ambulancia', options: simplePresenceOptions, idPrefix: 'reg'},
+                        {name: 'ambulanceRegistrationPresent', label: 'Permiso de Circulación', options: simplePresenceOptions, idPrefix: 'reg'},
                         {name: 'greenCardInsurancePresent', label: 'Tarjeta Verde Seguro', options: simplePresenceOptions, idPrefix: 'green'},
                         {name: 'abnAmroMaestroCardPresent', label: 'Tarjeta Maestro ABN Amro', options: simplePresenceOptions, idPrefix: 'maestro'},
                         {name: 'utaTankCardPresent', label: 'Tarjeta Combustible UTA', options: simplePresenceOptions, idPrefix: 'uta'},
                         {name: 'ipadStatus', label: 'iPad', options: equipmentStatusOptions, idPrefix: 'ipad'},
                     ].map(item => (
-                        <FormField key={item.name} control={form.control} name={item.name as keyof DailyVehicleCheckFormValues} render={({ field }) => (
+                        <FormField key={item.name} control={form.control} name={item.name as keyof RevisionDiariaVehiculoFormValues} render={({ field }) => (
                         <FormItem>
                             <FormLabel>{item.label}</FormLabel>
                             <RadioGroup onValueChange={field.onChange} value={field.value as string} className="flex items-center space-x-2 pt-1 flex-wrap">
@@ -348,7 +348,7 @@ export function DailyVehicleCheckForm({ ambulance }: DailyVehicleCheckFormProps)
             <CardFooter className="mt-8 p-0 pt-6 flex justify-end">
               <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
                 <Save className="mr-2 h-4 w-4" />
-                {form.formState.isSubmitting ? "Guardando..." : (existingCheck ? "Actualizar Control" : "Guardar Control")}
+                {form.formState.isSubmitting ? "Guardando..." : (existingCheck ? "Actualizar Revisión" : "Guardar Revisión")}
               </Button>
             </CardFooter>
           </form>
@@ -357,13 +357,3 @@ export function DailyVehicleCheckForm({ ambulance }: DailyVehicleCheckFormProps)
     </Card>
   );
 }
-
-// Assuming CardSection might be a simple styled div for grouping, if not a standard component
-// If it's not defined elsewhere, you might need to define it or use a simple div with classes.
-// For example:
-// const CardSection = ({className, children}: {className?: string, children: React.ReactNode}) => (
-//   <section className={cn("space-y-4 p-4 border rounded-md", className)}>
-//     {children}
-//   </section>
-// );
-// However, I've used <section> directly with similar styling.

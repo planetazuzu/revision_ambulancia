@@ -111,7 +111,7 @@ export interface WorkflowStep {
   isNextStep?: boolean;
 }
 
-// --- Tipos para el Control Diario del Vehículo ---
+// --- Tipos para la Revisión Diaria del Vehículo ---
 export type FuelLevel = 'Lleno' | '3/4' | '1/2' | '1/4' | 'Reserva' | 'Vacío';
 export type TyrePressureStatus = 'OK' | 'Baja' | 'Alta' | 'Revisar';
 export type SimplePresenceStatus = 'Presente' | 'Ausente';
@@ -123,7 +123,7 @@ export interface ExteriorCornerCheck {
   photoTaken?: boolean; // Placeholder for actual photo
 }
 
-export interface DailyVehicleCheck {
+export interface RevisionDiariaVehiculo {
   id: string;
   ambulanceId: string;
   driverFirstName: string;
@@ -149,3 +149,4 @@ export interface DailyVehicleCheck {
   additionalNotes?: string;
   submittedByUserId: string;
 }
+
