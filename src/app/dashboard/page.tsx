@@ -11,12 +11,12 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function DashboardPage() {
-  const { user, login, loading: authLoading } = useAuth(); // Added login
-  const { alerts, ambulances, getAllAmbulancesCount } = useAppData(); // Use 'ambulances' which is now role-aware
+  const { user, login, loading: authLoading } = useAuth();
+  const { alerts, ambulances, getAllAmbulancesCount } = useAppData();
 
   const highSeverityAlerts = alerts.filter(alert => alert.severity === 'high');
   const mediumSeverityAlerts = alerts.filter(alert => alert.severity === 'medium');
-  const totalAmbulancesInSystem = getAllAmbulancesCount(); // For admin display
+  const totalAmbulancesInSystem = getAllAmbulancesCount();
 
   const getIconForAlertType = (type: string) => {
     switch (type) {
@@ -46,9 +46,10 @@ export default function DashboardPage() {
     );
   }
   
-  const pageDescription = user?.role === 'admin' 
+  const pageDescription = user?.role === 'coordinador' 
     ? `Aquí tienes un resumen del estado de tu flota de ${totalAmbulancesInSystem} ambulancia(s).`
-    : (ambulances.length === 1 ? `Resumen del estado de tu ambulancia asignada: ${ambulances[0].name}.` : "No tienes una ambulancia asignada para ver un resumen.");
+    : (ambulances.length === 1 ? `Resumen del estado de tu ambulancia asignada: ${ambulances[0].name}.` 
+    : (user?.role === 'usuario' ? "No tienes una ambulancia asignada para ver un resumen." : "Bienvenido al sistema."));
 
   return (
     <div className="container mx-auto py-2">
@@ -57,21 +58,21 @@ export default function DashboardPage() {
         description={pageDescription}
       />
 
-      {user?.role === 'admin' && (
+      {user?.role === 'coordinador' && ( // Show only for coordinators
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Users className="h-6 w-6" /> Cambio Rápido de Usuario (Admin)</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Users className="h-6 w-6" /> Cambio Rápido de Usuario (Coordinador)</CardTitle>
             <CardDescription>Prueba la aplicación desde la perspectiva de diferentes roles.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={() => login('Admin Alicia')} variant="secondary" className="flex-1">
-              <LogIn className="mr-2 h-4 w-4" /> Iniciar como Admin Alicia (Admin)
+            <Button onClick={() => login('Alicia Coordinadora')} variant="secondary" className="flex-1">
+              <LogIn className="mr-2 h-4 w-4" /> Iniciar como Alicia (Coordinador)
             </Button>
             <Button onClick={() => login('Ambulancia 01')} variant="outline" className="flex-1">
-             <LogIn className="mr-2 h-4 w-4" /> Iniciar como Ambulancia 01 (Asignado)
+             <LogIn className="mr-2 h-4 w-4" /> Iniciar como Ambulancia 01 (Usuario Asignado)
             </Button>
-            <Button onClick={() => login('Coordinador')} variant="outline" className="flex-1">
-              <LogIn className="mr-2 h-4 w-4" /> Iniciar como Coordinador (No Asignado)
+            <Button onClick={() => login('Carlos Usuario')} variant="outline" className="flex-1">
+              <LogIn className="mr-2 h-4 w-4" /> Iniciar como Carlos (Usuario No Asignado)
             </Button>
           </CardContent>
         </Card>
@@ -152,9 +153,9 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Resumen del Estado de Ambulancias</CardTitle>
             <CardDescription>
-              {user?.role === 'admin' 
+              {user?.role === 'coordinador' 
                 ? "Vista rápida de las tareas actuales para cada ambulancia."
-                : (ambulances.length === 1 ? "Tareas actuales para tu ambulancia asignada." : "")}
+                : (ambulances.length >= 1 ? "Tareas actuales para tu ambulancia asignada." : "")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -189,10 +190,10 @@ export default function DashboardPage() {
                 })}
               </div>
             ) : (
-              user?.role === 'admin' ? (
+              user?.role === 'coordinador' ? (
                 <p className="text-muted-foreground">Aún no hay ambulancias registradas. <Link href="/dashboard/ambulances" className="text-primary hover:underline">Añade una ambulancia</Link> para empezar.</p>
               ) : (
-                <p className="text-muted-foreground">No tienes una ambulancia asignada. Contacta a un administrador.</p>
+                <p className="text-muted-foreground">No tienes una ambulancia asignada. Contacta a un coordinador.</p>
               )
             )}
           </CardContent>
@@ -201,4 +202,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

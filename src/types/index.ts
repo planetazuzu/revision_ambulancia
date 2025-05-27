@@ -1,8 +1,8 @@
 export interface User {
   id: string;
   name: string;
-  role: 'admin' | 'reviewer' | 'cleaner' | 'inventory_manager';
-  assignedAmbulanceId?: string; // Nuevo campo para la ambulancia asignada
+  role: 'coordinador' | 'usuario'; // Updated roles
+  assignedAmbulanceId?: string;
 }
 
 export interface Ambulance {

@@ -5,9 +5,6 @@ import type { User, Ambulance } from '@/types';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useEffect } from 'react';
-// Import initialAmbulances to check for name matching
-// This creates a dependency, ideally this logic might live elsewhere or be passed
-// For this mock, direct import is simpler.
 import { initialAmbulances } from './AppDataContext';
 
 
@@ -21,10 +18,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const mockUsers: User[] = [
-  { id: 'user1', name: 'Coordinador', role: 'reviewer' },
-  { id: 'user2', name: 'Juan Limpieza', role: 'cleaner' },
-  { id: 'user3', name: 'Admin Alicia', role: 'admin' },
-  { id: 'amb001user', name: 'Ambulancia 01', role: 'reviewer' }, // Example user matching an ambulance name
+  { id: 'userCoordinador', name: 'Alicia Coordinadora', role: 'coordinador' },
+  { id: 'amb001user', name: 'Ambulancia 01', role: 'usuario' }, // This user's name matches an ambulance name
+  { id: 'userGenerico', name: 'Carlos Usuario', role: 'usuario' }, // Generic user, won't match an ambulance
 ];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -33,7 +29,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // setLoading(true); // Ensure loading is true at the start
     const storedUser = localStorage.getItem('ambuReviewUser');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
@@ -42,25 +37,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = (name: string) => {
+    setLoading(true);
     let loggedInUser: User | undefined = mockUsers.find(u => u.name.toLowerCase() === name.toLowerCase());
     
     if (!loggedInUser) {
-      loggedInUser = { id: `user-${Date.now()}`, name: name || "Usuario Invitado", role: 'reviewer' };
+      // Default to 'usuario' if name not in mockUsers, or create a more specific logic
+      loggedInUser = { id: `user-${Date.now()}`, name: name || "Usuario Invitado", role: 'usuario' };
     }
 
-    // Assign ambulance if not admin and name matches an ambulance
-    if (loggedInUser.role !== 'admin') {
+    // Assign ambulance if role is 'usuario' and name matches an ambulance
+    if (loggedInUser.role === 'usuario') {
       const assignedAmbulance = initialAmbulances.find(
         (amb: Ambulance) => amb.name.toLowerCase() === loggedInUser!.name.toLowerCase()
       );
       if (assignedAmbulance) {
         loggedInUser.assignedAmbulanceId = assignedAmbulance.id;
+      } else {
+        delete loggedInUser.assignedAmbulanceId; // Ensure no assignment if no match
       }
+    } else {
+        delete loggedInUser.assignedAmbulanceId; // Coordinators don't have specific ambulance assignments
     }
     
     setUser(loggedInUser);
     localStorage.setItem('ambuReviewUser', JSON.stringify(loggedInUser));
     router.push('/dashboard');
+    setLoading(false);
   };
 
   const logout = () => {
@@ -83,4 +85,3 @@ export function useAuth() {
   }
   return context;
 }
-

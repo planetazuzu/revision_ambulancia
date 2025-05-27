@@ -5,14 +5,13 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-// Label no es necesario si usamos FormLabel de react-hook-form integration
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAppData } from "@/contexts/AppDataContext";
 import type { Ambulance } from "@/types";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useAuth } from "@/contexts/AuthContext";
 
 const ambulanceFormSchema = z.object({
   name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres." }),
@@ -31,7 +30,7 @@ interface AmbulanceFormSheetProps {
 
 export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: AmbulanceFormSheetProps) {
   const { addAmbulance, updateAmbulance } = useAppData();
-  const { user } = useAuth(); // Get user
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<AmbulanceFormValues>({
@@ -63,8 +62,8 @@ export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: Ambulanc
   }, [ambulance, form, isOpen]);
 
   const onSubmit = (data: AmbulanceFormValues) => {
-    if (user?.role !== 'admin') {
-      toast({ title: "Acción no permitida", description: "Solo los administradores pueden gestionar ambulancias.", variant: "destructive" });
+    if (user?.role !== 'coordinador') { // Changed from 'admin'
+      toast({ title: "Acción no permitida", description: "Solo los coordinadores pueden gestionar ambulancias.", variant: "destructive" });
       onOpenChange(false);
       return;
     }
@@ -79,8 +78,7 @@ export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: Ambulanc
     onOpenChange(false);
   };
 
-  if (user?.role !== 'admin' && isOpen) {
-    // Ensure sheet doesn't open for non-admins, or close it if already open by mistake
+  if (user?.role !== 'coordinador' && isOpen) { // Changed from 'admin'
     onOpenChange(false); 
     return null;
   }

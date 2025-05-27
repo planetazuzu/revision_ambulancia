@@ -5,10 +5,10 @@ import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonC
 import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale'; 
-import { useAuth } from './AuthContext'; // Import useAuth to get current user
+import { useAuth } from './AuthContext';
 
 interface AppDataContextType {
-  ambulances: Ambulance[]; // This will now be the accessible list
+  ambulances: Ambulance[];
   getAmbulanceById: (id: string) => Ambulance | undefined;
   addAmbulance: (ambulance: Omit<Ambulance, 'id' | 'mechanicalReviewCompleted' | 'cleaningCompleted' | 'inventoryCompleted'>) => void;
   updateAmbulance: (ambulance: Ambulance) => void;
@@ -35,15 +35,14 @@ interface AppDataContextType {
   deleteNonConsumableMaterial: (id: string) => void;
 
   alerts: Alert[];
-  generateAlerts: () => void; // Kept for explicit call if needed, but also runs on effect
+  generateAlerts: () => void;
 
   updateAmbulanceWorkflowStep: (ambulanceId: string, step: 'mechanical' | 'cleaning' | 'inventory', status: boolean) => void;
-  getAllAmbulancesCount: () => number; // Helper for admin views or global stats if needed
+  getAllAmbulancesCount: () => number;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
-// Exporting initialAmbulances so AuthContext can access it for mock assignment
 export const initialAmbulances: Ambulance[] = [
   { id: 'amb001', name: 'Ambulancia 01', licensePlate: 'XYZ 123', model: 'Mercedes Sprinter', year: 2022, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastMechanicalReview: new Date(Date.now() - 5*24*60*60*1000).toISOString() },
   { id: 'amb002', name: 'Ambulancia 02', licensePlate: 'ABC 789', model: 'Ford Transit', year: 2021, mechanicalReviewCompleted: true, cleaningCompleted: false, inventoryCompleted: false, lastCleaning: new Date(Date.now() - 2*24*60*60*1000).toISOString() },
@@ -62,7 +61,7 @@ const initialNonConsumables: NonConsumableMaterial[] = [
 
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading } = useAuth(); // Get user from AuthContext
+  const { user, loading: authLoading } = useAuth();
 
   const [allAmbulancesData, setAllAmbulancesData] = useState<Ambulance[]>(initialAmbulances);
   const [mechanicalReviews, setMechanicalReviews] = useState<MechanicalReview[]>([]);
@@ -73,10 +72,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const accessibleAmbulances = useMemo(() => {
     if (authLoading || !user) return [];
-    if (user.role === 'admin') {
+    if (user.role === 'coordinador') { // Changed from 'admin'
       return allAmbulancesData;
     }
-    if (user.assignedAmbulanceId) {
+    if (user.role === 'usuario' && user.assignedAmbulanceId) {
       return allAmbulancesData.filter(a => a.id === user.assignedAmbulanceId);
     }
     return [];
@@ -87,21 +86,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const ambulance = allAmbulancesData.find(a => a.id === id);
     if (!ambulance) return undefined;
 
-    if (user.role === 'admin') {
+    if (user.role === 'coordinador') { // Changed from 'admin'
       return ambulance;
     }
-    if (user.assignedAmbulanceId === id) {
+    if (user.role === 'usuario' && user.assignedAmbulanceId === id) {
       return ambulance;
     }
-    return undefined; // Non-admin trying to access an ambulance not assigned to them
+    return undefined;
   };
   
   const getAllAmbulancesCount = () => allAmbulancesData.length;
 
   const addAmbulance = (ambulanceData: Omit<Ambulance, 'id' | 'mechanicalReviewCompleted' | 'cleaningCompleted' | 'inventoryCompleted'>) => {
-    // Only admins should add ambulances in this model
-    if (user?.role !== 'admin') {
-      console.warn("Intento no autorizado de añadir ambulancia por usuario no administrador.");
+    if (user?.role !== 'coordinador') { // Changed from 'admin'
+      console.warn("Intento no autorizado de añadir ambulancia por usuario no coordinador.");
       return;
     }
     const newAmbulance: Ambulance = {
@@ -115,21 +113,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const updateAmbulance = (updatedAmbulance: Ambulance) => {
-    // Admins can update any, non-admins only their own
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== updatedAmbulance.id) {
-      console.warn("Intento no autorizado de actualizar ambulancia por usuario no administrador o ambulancia incorrecta.");
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedAmbulance.id)) { // Changed from 'admin'
+      console.warn("Intento no autorizado de actualizar ambulancia por usuario no coordinador o ambulancia incorrecta.");
       return;
     }
     setAllAmbulancesData(prev => prev.map(a => a.id === updatedAmbulance.id ? updatedAmbulance : a));
   };
 
   const deleteAmbulance = (id: string) => {
-    if (user?.role !== 'admin') {
-      console.warn("Intento no autorizado de eliminar ambulancia por usuario no administrador.");
+    if (user?.role !== 'coordinador') { // Changed from 'admin'
+      console.warn("Intento no autorizado de eliminar ambulancia por usuario no coordinador.");
       return;
     }
     setAllAmbulancesData(prev => prev.filter(a => a.id !== id));
-    // Also clear related data for the deleted ambulance
     setMechanicalReviews(prev => prev.filter(r => r.ambulanceId !== id));
     setCleaningLogs(prev => prev.filter(cl => cl.ambulanceId !== id));
     setConsumableMaterials(prev => prev.filter(cm => cm.ambulanceId !== id));
@@ -137,15 +133,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const getMechanicalReviewByAmbulanceId = (ambulanceId: string) => {
-     // Check if user has access to this ambulanceId first
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== ambulanceId) {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) { // Changed from 'admin'
       return undefined;
     }
     return mechanicalReviews.find(r => r.ambulanceId === ambulanceId);
   }
 
   const saveMechanicalReview = (reviewData: Omit<MechanicalReview, 'id'>) => {
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== reviewData.ambulanceId) {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== reviewData.ambulanceId)) { // Changed from 'admin'
        console.warn("Intento no autorizado de guardar revisión mecánica.");
        return;
     }
@@ -165,14 +160,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const getCleaningLogsByAmbulanceId = (ambulanceId: string) => {
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== ambulanceId) {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) { // Changed from 'admin'
       return [];
     }
     return cleaningLogs.filter(log => log.ambulanceId === ambulanceId).sort((a,b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
   }
 
   const addCleaningLog = (logData: Omit<CleaningLog, 'id'>) => {
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== logData.ambulanceId) {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== logData.ambulanceId)) { // Changed from 'admin'
        console.warn("Intento no autorizado de añadir registro de limpieza.");
        return;
     }
@@ -184,13 +179,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
 
   const getConsumableMaterialsByAmbulanceId = (ambulanceId: string) => {
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== ambulanceId) {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) { // Changed from 'admin'
       return [];
     }
     return consumableMaterials.filter(m => m.ambulanceId === ambulanceId);
   }
   const addConsumableMaterial = (materialData: Omit<ConsumableMaterial, 'id'>) => {
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== materialData.ambulanceId) {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialData.ambulanceId)) { // Changed from 'admin'
        console.warn("Intento no autorizado de añadir material consumible.");
        return;
     }
@@ -198,7 +193,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setConsumableMaterials(prev => [...prev, newMaterial]);
   };
   const updateConsumableMaterial = (updatedMaterial: ConsumableMaterial) => {
-     if (user?.role !== 'admin' && user?.assignedAmbulanceId !== updatedMaterial.ambulanceId) {
+     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedMaterial.ambulanceId)) { // Changed from 'admin'
        console.warn("Intento no autorizado de actualizar material consumible.");
        return;
     }
@@ -207,7 +202,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const deleteConsumableMaterial = (id: string) => {
     const materialToDelete = consumableMaterials.find(m => m.id === id);
     if (!materialToDelete) return;
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== materialToDelete.ambulanceId) {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialToDelete.ambulanceId)) { // Changed from 'admin'
        console.warn("Intento no autorizado de eliminar material consumible.");
        return;
     }
@@ -216,13 +211,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
 
   const getNonConsumableMaterialsByAmbulanceId = (ambulanceId: string) => {
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== ambulanceId) {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) { // Changed from 'admin'
       return [];
     }
     return nonConsumableMaterials.filter(m => m.ambulanceId === ambulanceId);
   }
   const addNonConsumableMaterial = (materialData: Omit<NonConsumableMaterial, 'id'>) => {
-     if (user?.role !== 'admin' && user?.assignedAmbulanceId !== materialData.ambulanceId) {
+     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialData.ambulanceId)) { // Changed from 'admin'
        console.warn("Intento no autorizado de añadir material no consumible.");
        return;
     }
@@ -230,7 +225,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setNonConsumableMaterials(prev => [...prev, newMaterial]);
   };
   const updateNonConsumableMaterial = (updatedMaterial: NonConsumableMaterial) => {
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== updatedMaterial.ambulanceId) {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedMaterial.ambulanceId)) { // Changed from 'admin'
        console.warn("Intento no autorizado de actualizar material no consumible.");
        return;
     }
@@ -239,7 +234,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const deleteNonConsumableMaterial = (id: string) => {
     const materialToDelete = nonConsumableMaterials.find(m => m.id === id);
     if (!materialToDelete) return;
-     if (user?.role !== 'admin' && user?.assignedAmbulanceId !== materialToDelete.ambulanceId) {
+     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialToDelete.ambulanceId)) { // Changed from 'admin'
        console.warn("Intento no autorizado de eliminar material no consumible.");
        return;
     }
@@ -247,7 +242,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const updateAmbulanceWorkflowStep = (ambulanceId: string, step: 'mechanical' | 'cleaning' | 'inventory', status: boolean) => {
-    if (user?.role !== 'admin' && user?.assignedAmbulanceId !== ambulanceId) {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) { // Changed from 'admin'
        console.warn("Intento no autorizado de actualizar paso de flujo de trabajo.");
        return;
     }
@@ -278,11 +273,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const generateAlerts = () => {
-    if (authLoading) return; // Don't generate alerts if auth is still loading
+    if (authLoading) return;
     const newAlerts: Alert[] = [];
     const today = new Date();
 
-    // Use accessibleAmbulances for generating alerts related to ambulance status
     accessibleAmbulances.forEach(ambulance => {
       if (!ambulance.mechanicalReviewCompleted && (!ambulance.lastMechanicalReview || new Date(ambulance.lastMechanicalReview) < new Date(today.getTime() - 14*24*60*60*1000) )) {
         newAlerts.push({
@@ -306,13 +300,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // Consumable materials alerts should be based on materials linked to accessible ambulances
     const accessibleAmbulanceIds = new Set(accessibleAmbulances.map(a => a.id));
     const relevantConsumableMaterials = consumableMaterials.filter(material => accessibleAmbulanceIds.has(material.ambulanceId));
     
     relevantConsumableMaterials.forEach(material => {
       const expiryDate = new Date(material.expiryDate);
-      const ambulance = allAmbulancesData.find(a=> a.id === material.ambulanceId); // Get name from all for context
+      const ambulance = allAmbulancesData.find(a=> a.id === material.ambulanceId);
       const ambulanceName = ambulance ? ambulance.name : 'Ambulancia Desconocida';
       const daysUntilExpiry = (expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
 
@@ -342,14 +335,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (!authLoading) { // Only generate alerts once user auth state is resolved
+    if (!authLoading) {
         generateAlerts();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, authLoading]); // Add authLoading dependency
+  }, [accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, authLoading]);
 
   const contextValue = {
-    ambulances: accessibleAmbulances, // Expose filtered list
+    ambulances: accessibleAmbulances,
     getAmbulanceById,
     addAmbulance,
     updateAmbulance,

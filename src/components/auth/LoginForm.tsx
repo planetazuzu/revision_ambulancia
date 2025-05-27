@@ -16,7 +16,6 @@ export default function LoginForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you'd send credentials to a backend. Here, we just use the name for mock login.
     login(name);
   };
 
@@ -35,7 +34,7 @@ export default function LoginForm() {
             <Label htmlFor="name">Usuario</Label>
             <Input
               id="name"
-              placeholder="ej. Coordinador, Admin Alicia"
+              placeholder="ej. Alicia Coordinadora, Ambulancia 01"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -56,9 +55,8 @@ export default function LoginForm() {
         </form>
       </CardContent>
       <CardFooter className="text-center text-sm">
-        <p>Usa cualquier nombre de usuario. El campo de contraseña es para demostración.</p>
+        <p>Prueba con: "Alicia Coordinadora", "Ambulancia 01", o "Carlos Usuario". Contraseña simulada.</p>
       </CardFooter>
     </Card>
   );
 }
-

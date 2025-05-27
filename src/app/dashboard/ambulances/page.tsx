@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Ambulance as AmbulanceIcon, PlusCircle, FilePenLine, Trash2, Wrench, Sparkles, Box as BoxIcon, CheckCircle, Info } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
-import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
+import { useAuth } from "@/contexts/AuthContext";
 import type { Ambulance } from "@/types";
 import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +25,7 @@ import {
 import { AmbulanceFormSheet } from "@/components/ambulances/AmbulanceFormSheet";
 
 export default function AmbulancesPage() {
-  const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
+  const { user, loading: authLoading } = useAuth();
   const { ambulances, deleteAmbulance, getAllAmbulancesCount } = useAppData();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingAmbulance, setEditingAmbulance] = useState<Ambulance | null>(null);
@@ -43,10 +44,10 @@ export default function AmbulancesPage() {
     if (!ambulance.mechanicalReviewCompleted) return { text: "Revisión Mecánica", Icon: Wrench, color: "text-orange-500", pathSuffix: "review" };
     if (!ambulance.cleaningCompleted) return { text: "Limpieza", Icon: Sparkles, color: "text-blue-500", pathSuffix: "cleaning" };
     if (!ambulance.inventoryCompleted) return { text: "Control de Inventario", Icon: BoxIcon, color: "text-purple-500", pathSuffix: "inventory" };
-    return { text: "Lista", Icon: CheckCircle, color: "text-green-500", pathSuffix: "review" }; // All complete, default to review view
+    return { text: "Lista", Icon: CheckCircle, color: "text-green-500", pathSuffix: "review" };
   }
 
-  const canManageAmbulances = user?.role === 'admin';
+  const canManageAmbulances = user?.role === 'coordinador'; // Changed from 'admin'
   const totalAmbulancesInSystem = getAllAmbulancesCount();
 
   if (authLoading) {
@@ -81,7 +82,7 @@ export default function AmbulancesPage() {
             <CardDescription>
               {canManageAmbulances 
                 ? "Comienza añadiendo tu primera ambulancia." 
-                : "Por favor, contacta a un administrador para que te asigne una ambulancia."}
+                : "Por favor, contacta a un coordinador para que te asigne una ambulancia."}
             </CardDescription>
           </CardHeader>
           {canManageAmbulances && (
