@@ -1,7 +1,8 @@
+
 export interface User {
   id: string;
   name: string;
-  role: 'coordinador' | 'usuario'; // Updated roles
+  role: 'coordinador' | 'usuario';
   assignedAmbulanceId?: string;
 }
 
@@ -17,6 +18,9 @@ export interface Ambulance {
   mechanicalReviewCompleted?: boolean;
   cleaningCompleted?: boolean;
   inventoryCompleted?: boolean;
+  lastKnownKilometers?: number;
+  lastCheckInByUserId?: string; // ID of user who last checked in
+  lastCheckInDate?: string; // Date ISO string of last check-in
 }
 
 export type ChecklistItemStatus = 'OK' | 'Reparar' | 'N/A';

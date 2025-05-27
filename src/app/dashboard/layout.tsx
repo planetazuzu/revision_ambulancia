@@ -33,9 +33,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/');
+      router.replace('/'); // Use replace to avoid back button to dashboard
+      return;
     }
-  }, [user, loading, router]);
+    if (!loading && user && user.role === 'usuario' && !user.assignedAmbulanceId && pathname !== '/validate-ambulance') {
+      router.replace('/validate-ambulance');
+    }
+  }, [user, loading, router, pathname]);
 
   if (loading || !user) {
     return (
@@ -44,6 +48,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </div>
     );
   }
+  
+  // If user needs validation and is not on validation page, show loading or minimal layout
+  // This specific check might be redundant if router.replace works fast enough,
+  // but can prevent rendering dashboard content momentarily.
+  if (user.role === 'usuario' && !user.assignedAmbulanceId && pathname !== '/validate-ambulance') {
+     return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Redirigiendo a validación de ambulancia...</p>
+      </div>
+    );
+  }
+
 
   const NavContent = () => {
     const { open } = useSidebar();

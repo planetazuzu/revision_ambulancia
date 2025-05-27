@@ -10,9 +10,11 @@ import { useAuth } from './AuthContext';
 interface AppDataContextType {
   ambulances: Ambulance[];
   getAmbulanceById: (id: string) => Ambulance | undefined;
+  getAmbulanceByName: (name: string) => Ambulance | undefined; // New
   addAmbulance: (ambulance: Omit<Ambulance, 'id' | 'mechanicalReviewCompleted' | 'cleaningCompleted' | 'inventoryCompleted'>) => void;
   updateAmbulance: (ambulance: Ambulance) => void;
   deleteAmbulance: (id: string) => void;
+  updateAmbulanceCheckInDetails: (ambulanceId: string, kilometers: number, userId: string) => void; // New
 
   mechanicalReviews: MechanicalReview[];
   getMechanicalReviewByAmbulanceId: (ambulanceId: string) => MechanicalReview | undefined;
@@ -44,8 +46,9 @@ interface AppDataContextType {
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
 export const initialAmbulances: Ambulance[] = [
-  { id: 'amb001', name: 'Ambulancia 01', licensePlate: 'XYZ 123', model: 'Mercedes Sprinter', year: 2022, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastMechanicalReview: new Date(Date.now() - 5*24*60*60*1000).toISOString() },
-  { id: 'amb002', name: 'Ambulancia 02', licensePlate: 'ABC 789', model: 'Ford Transit', year: 2021, mechanicalReviewCompleted: true, cleaningCompleted: false, inventoryCompleted: false, lastCleaning: new Date(Date.now() - 2*24*60*60*1000).toISOString() },
+  { id: 'amb001', name: 'Ambulancia 01', licensePlate: 'XYZ 123', model: 'Mercedes Sprinter', year: 2022, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastMechanicalReview: new Date(Date.now() - 5*24*60*60*1000).toISOString(), lastKnownKilometers: 10500, lastCheckInDate: new Date(Date.now() - 5*24*60*60*1000).toISOString() },
+  { id: 'amb002', name: 'Ambulancia 02', licensePlate: 'ABC 789', model: 'Ford Transit', year: 2021, mechanicalReviewCompleted: true, cleaningCompleted: false, inventoryCompleted: false, lastCleaning: new Date(Date.now() - 2*24*60*60*1000).toISOString(), lastKnownKilometers: 22300, lastCheckInDate: new Date(Date.now() - 2*24*60*60*1000).toISOString()  },
+  { id: 'amb003', name: 'Unidad Rápida B1', licensePlate: 'DEF 456', model: 'VW Crafter', year: 2023, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastKnownKilometers: 5200 },
 ];
 
 const initialConsumables: ConsumableMaterial[] = [
@@ -72,7 +75,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const accessibleAmbulances = useMemo(() => {
     if (authLoading || !user) return [];
-    if (user.role === 'coordinador') { // Changed from 'admin'
+    if (user.role === 'coordinador') {
       return allAmbulancesData;
     }
     if (user.role === 'usuario' && user.assignedAmbulanceId) {
@@ -86,7 +89,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const ambulance = allAmbulancesData.find(a => a.id === id);
     if (!ambulance) return undefined;
 
-    if (user.role === 'coordinador') { // Changed from 'admin'
+    if (user.role === 'coordinador') {
       return ambulance;
     }
     if (user.role === 'usuario' && user.assignedAmbulanceId === id) {
@@ -94,11 +97,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
     return undefined;
   };
+
+  const getAmbulanceByName = (name: string): Ambulance | undefined => {
+    // This search should be case-insensitive for better usability
+    return allAmbulancesData.find(a => a.name.toLowerCase() === name.toLowerCase());
+  };
   
   const getAllAmbulancesCount = () => allAmbulancesData.length;
 
   const addAmbulance = (ambulanceData: Omit<Ambulance, 'id' | 'mechanicalReviewCompleted' | 'cleaningCompleted' | 'inventoryCompleted'>) => {
-    if (user?.role !== 'coordinador') { // Changed from 'admin'
+    if (user?.role !== 'coordinador') {
       console.warn("Intento no autorizado de añadir ambulancia por usuario no coordinador.");
       return;
     }
@@ -113,16 +121,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const updateAmbulance = (updatedAmbulance: Ambulance) => {
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedAmbulance.id)) { // Changed from 'admin'
-      console.warn("Intento no autorizado de actualizar ambulancia por usuario no coordinador o ambulancia incorrecta.");
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedAmbulance.id)) {
+      console.warn("Intento no autorizado de actualizar ambulancia.");
       return;
     }
     setAllAmbulancesData(prev => prev.map(a => a.id === updatedAmbulance.id ? updatedAmbulance : a));
   };
 
+  const updateAmbulanceCheckInDetails = (ambulanceId: string, kilometers: number, userId: string) => {
+     setAllAmbulancesData(prev => prev.map(a => {
+      if (a.id === ambulanceId) {
+        return {
+          ...a,
+          lastKnownKilometers: kilometers,
+          lastCheckInByUserId: userId,
+          lastCheckInDate: new Date().toISOString(),
+        };
+      }
+      return a;
+    }));
+  };
+
   const deleteAmbulance = (id: string) => {
-    if (user?.role !== 'coordinador') { // Changed from 'admin'
-      console.warn("Intento no autorizado de eliminar ambulancia por usuario no coordinador.");
+    if (user?.role !== 'coordinador') {
+      console.warn("Intento no autorizado de eliminar ambulancia.");
       return;
     }
     setAllAmbulancesData(prev => prev.filter(a => a.id !== id));
@@ -133,14 +155,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const getMechanicalReviewByAmbulanceId = (ambulanceId: string) => {
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) { // Changed from 'admin'
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
       return undefined;
     }
     return mechanicalReviews.find(r => r.ambulanceId === ambulanceId);
   }
 
   const saveMechanicalReview = (reviewData: Omit<MechanicalReview, 'id'>) => {
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== reviewData.ambulanceId)) { // Changed from 'admin'
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== reviewData.ambulanceId)) {
        console.warn("Intento no autorizado de guardar revisión mecánica.");
        return;
     }
@@ -160,14 +182,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const getCleaningLogsByAmbulanceId = (ambulanceId: string) => {
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) { // Changed from 'admin'
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
       return [];
     }
     return cleaningLogs.filter(log => log.ambulanceId === ambulanceId).sort((a,b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
   }
 
   const addCleaningLog = (logData: Omit<CleaningLog, 'id'>) => {
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== logData.ambulanceId)) { // Changed from 'admin'
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== logData.ambulanceId)) {
        console.warn("Intento no autorizado de añadir registro de limpieza.");
        return;
     }
@@ -179,13 +201,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
 
   const getConsumableMaterialsByAmbulanceId = (ambulanceId: string) => {
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) { // Changed from 'admin'
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
       return [];
     }
     return consumableMaterials.filter(m => m.ambulanceId === ambulanceId);
   }
   const addConsumableMaterial = (materialData: Omit<ConsumableMaterial, 'id'>) => {
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialData.ambulanceId)) { // Changed from 'admin'
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialData.ambulanceId)) {
        console.warn("Intento no autorizado de añadir material consumible.");
        return;
     }
@@ -193,7 +215,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setConsumableMaterials(prev => [...prev, newMaterial]);
   };
   const updateConsumableMaterial = (updatedMaterial: ConsumableMaterial) => {
-     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedMaterial.ambulanceId)) { // Changed from 'admin'
+     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedMaterial.ambulanceId)) {
        console.warn("Intento no autorizado de actualizar material consumible.");
        return;
     }
@@ -202,7 +224,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const deleteConsumableMaterial = (id: string) => {
     const materialToDelete = consumableMaterials.find(m => m.id === id);
     if (!materialToDelete) return;
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialToDelete.ambulanceId)) { // Changed from 'admin'
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialToDelete.ambulanceId)) {
        console.warn("Intento no autorizado de eliminar material consumible.");
        return;
     }
@@ -211,13 +233,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
 
   const getNonConsumableMaterialsByAmbulanceId = (ambulanceId: string) => {
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) { // Changed from 'admin'
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
       return [];
     }
     return nonConsumableMaterials.filter(m => m.ambulanceId === ambulanceId);
   }
   const addNonConsumableMaterial = (materialData: Omit<NonConsumableMaterial, 'id'>) => {
-     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialData.ambulanceId)) { // Changed from 'admin'
+     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialData.ambulanceId)) {
        console.warn("Intento no autorizado de añadir material no consumible.");
        return;
     }
@@ -225,7 +247,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setNonConsumableMaterials(prev => [...prev, newMaterial]);
   };
   const updateNonConsumableMaterial = (updatedMaterial: NonConsumableMaterial) => {
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedMaterial.ambulanceId)) { // Changed from 'admin'
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedMaterial.ambulanceId)) {
        console.warn("Intento no autorizado de actualizar material no consumible.");
        return;
     }
@@ -234,7 +256,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const deleteNonConsumableMaterial = (id: string) => {
     const materialToDelete = nonConsumableMaterials.find(m => m.id === id);
     if (!materialToDelete) return;
-     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialToDelete.ambulanceId)) { // Changed from 'admin'
+     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialToDelete.ambulanceId)) {
        console.warn("Intento no autorizado de eliminar material no consumible.");
        return;
     }
@@ -242,7 +264,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const updateAmbulanceWorkflowStep = (ambulanceId: string, step: 'mechanical' | 'cleaning' | 'inventory', status: boolean) => {
-    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) { // Changed from 'admin'
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
        console.warn("Intento no autorizado de actualizar paso de flujo de trabajo.");
        return;
     }
@@ -339,13 +361,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         generateAlerts();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, authLoading]);
+  }, [accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, authLoading]); // Dependencies should be correct now
 
   const contextValue = {
     ambulances: accessibleAmbulances,
     getAmbulanceById,
+    getAmbulanceByName,
     addAmbulance,
     updateAmbulance,
+    updateAmbulanceCheckInDetails,
     deleteAmbulance,
     mechanicalReviews, getMechanicalReviewByAmbulanceId, saveMechanicalReview,
     cleaningLogs, getCleaningLogsByAmbulanceId, addCleaningLog,
