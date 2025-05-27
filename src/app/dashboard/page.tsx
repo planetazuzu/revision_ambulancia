@@ -1,3 +1,4 @@
+
 "use client";
 
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -5,20 +6,22 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAppData } from "@/contexts/AppDataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
-import { AlertTriangle, Ambulance, Box, CheckCircle, ShieldAlert, Sparkles, Wrench } from "lucide-react";
+import { AlertTriangle, Ambulance, Box, CheckCircle, ShieldAlert, Sparkles, Wrench, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
-  const { alerts, ambulances, generateAlerts } = useAppData();
+  const { user, loading: authLoading } = useAuth();
+  const { alerts, ambulances, getAllAmbulancesCount } = useAppData(); // Use 'ambulances' which is now role-aware
 
   const highSeverityAlerts = alerts.filter(alert => alert.severity === 'high');
   const mediumSeverityAlerts = alerts.filter(alert => alert.severity === 'medium');
+  const totalAmbulancesInSystem = getAllAmbulancesCount(); // For admin display
 
   const getIconForAlertType = (type: string) => {
     switch (type) {
       case 'review_pending': return <Wrench className="h-5 w-5 text-yellow-500" />;
+      case 'cleaning_pending': return <Sparkles className="h-5 w-5 text-blue-400" />;
       case 'expiring_soon': return <ShieldAlert className="h-5 w-5 text-yellow-500" />;
       case 'expired_material': return <AlertTriangle className="h-5 w-5 text-red-500" />;
       case 'ampulario_expiring_soon': return <ShieldAlert className="h-5 w-5 text-yellow-500" />;
@@ -34,11 +37,24 @@ export default function DashboardPage() {
     return { text: "Todas las revisiones completas", Icon: CheckCircle, color: "text-green-500", path: `/dashboard/ambulances/${ambulance.id}/review`};
   }
 
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Info className="h-10 w-10 animate-pulse mr-3" />
+        <p className="text-lg">Cargando datos de usuario...</p>
+      </div>
+    );
+  }
+  
+  const pageDescription = user?.role === 'admin' 
+    ? `Aquí tienes un resumen del estado de tu flota de ${totalAmbulancesInSystem} ambulancia(s).`
+    : (ambulances.length === 1 ? `Resumen del estado de tu ambulancia asignada: ${ambulances[0].name}.` : "No tienes una ambulancia asignada para ver un resumen.");
+
   return (
     <div className="container mx-auto py-2">
       <PageHeader
         title={`¡Bienvenido, ${user?.name || 'Usuario'}!`}
-        description="Aquí tienes un resumen del estado de tu flota de ambulancias."
+        description={pageDescription}
       />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -87,17 +103,17 @@ export default function DashboardPage() {
               <ScrollArea className="h-[200px]">
               <ul className="space-y-3">
                 {mediumSeverityAlerts.map(alert => (
-                  <li key={alert.id} className="flex items-start gap-3 p-3 bg-accent/10 rounded-md">
+                  <li key={alert.id} className="flex items-start gap-3 p-3 bg-orange-500/10 rounded-md">
                     {getIconForAlertType(alert.type)}
                      <div>
-                      <p className="font-medium text-sm text-accent-foreground-dark">{alert.message}</p>
+                      <p className="font-medium text-sm text-orange-600">{alert.message}</p>
                        {alert.ambulanceId && (
-                         <Button variant="link" size="sm" className="p-0 h-auto text-accent-foreground-dark hover:text-accent/80" asChild>
+                         <Button variant="link" size="sm" className="p-0 h-auto text-orange-600 hover:text-orange-500" asChild>
                             <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>Ver Ambulancia</Link>
                          </Button>
                       )}
                         {alert.type.startsWith('ampulario_') && (
-                         <Button variant="link" size="sm" className="p-0 h-auto text-accent-foreground-dark hover:text-accent/80" asChild>
+                         <Button variant="link" size="sm" className="p-0 h-auto text-orange-600 hover:text-orange-500" asChild>
                             <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Ampulario</Link>
                          </Button>
                        )}
@@ -115,7 +131,11 @@ export default function DashboardPage() {
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Resumen del Estado de Ambulancias</CardTitle>
-            <CardDescription>Vista rápida de las tareas actuales para cada ambulancia.</CardDescription>
+            <CardDescription>
+              {user?.role === 'admin' 
+                ? "Vista rápida de las tareas actuales para cada ambulancia."
+                : (ambulances.length === 1 ? "Tareas actuales para tu ambulancia asignada." : "")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {ambulances.length > 0 ? (
@@ -149,7 +169,11 @@ export default function DashboardPage() {
                 })}
               </div>
             ) : (
-              <p className="text-muted-foreground">Aún no hay ambulancias registradas. <Link href="/dashboard/ambulances" className="text-primary hover:underline">Añade una ambulancia</Link> para empezar.</p>
+              user?.role === 'admin' ? (
+                <p className="text-muted-foreground">Aún no hay ambulancias registradas. <Link href="/dashboard/ambulances" className="text-primary hover:underline">Añade una ambulancia</Link> para empezar.</p>
+              ) : (
+                <p className="text-muted-foreground">No tienes una ambulancia asignada. Contacta a un administrador.</p>
+              )
             )}
           </CardContent>
         </Card>

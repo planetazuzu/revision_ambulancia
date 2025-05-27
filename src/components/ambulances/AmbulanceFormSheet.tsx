@@ -1,16 +1,18 @@
+
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+// Label no es necesario si usamos FormLabel de react-hook-form integration
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAppData } from "@/contexts/AppDataContext";
 import type { Ambulance } from "@/types";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 
 const ambulanceFormSchema = z.object({
   name: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres." }),
@@ -29,6 +31,7 @@ interface AmbulanceFormSheetProps {
 
 export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: AmbulanceFormSheetProps) {
   const { addAmbulance, updateAmbulance } = useAppData();
+  const { user } = useAuth(); // Get user
   const { toast } = useToast();
 
   const form = useForm<AmbulanceFormValues>({
@@ -60,15 +63,27 @@ export function AmbulanceFormSheet({ isOpen, onOpenChange, ambulance }: Ambulanc
   }, [ambulance, form, isOpen]);
 
   const onSubmit = (data: AmbulanceFormValues) => {
+    if (user?.role !== 'admin') {
+      toast({ title: "Acción no permitida", description: "Solo los administradores pueden gestionar ambulancias.", variant: "destructive" });
+      onOpenChange(false);
+      return;
+    }
+
     if (ambulance) {
       updateAmbulance({ ...ambulance, ...data });
-      toast({ title: "Ambulancia Actualizada", description: `${data.name} ha sido actualizada correctamente.` });
+      toast({ title: "Ambulancia Actualizada", description: `La ambulancia ${data.name} ha sido actualizada correctamente.` });
     } else {
       addAmbulance(data);
-      toast({ title: "Ambulancia Añadida", description: `${data.name} ha sido añadida correctamente.` });
+      toast({ title: "Ambulancia Añadida", description: `La ambulancia ${data.name} ha sido añadida correctamente.` });
     }
     onOpenChange(false);
   };
+
+  if (user?.role !== 'admin' && isOpen) {
+    // Ensure sheet doesn't open for non-admins, or close it if already open by mistake
+    onOpenChange(false); 
+    return null;
+  }
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>

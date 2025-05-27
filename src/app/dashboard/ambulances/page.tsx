@@ -1,11 +1,13 @@
+
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Ambulance as AmbulanceIcon, PlusCircle, FilePenLine, Trash2, Wrench, Sparkles, Box as BoxIcon, CheckCircle } from "lucide-react";
+import { Ambulance as AmbulanceIcon, PlusCircle, FilePenLine, Trash2, Wrench, Sparkles, Box as BoxIcon, CheckCircle, Info } from "lucide-react";
 import { useAppData } from "@/contexts/AppDataContext";
+import { useAuth } from "@/contexts/AuthContext"; // Import useAuth
 import type { Ambulance } from "@/types";
 import { format } from "date-fns";
 import {
@@ -22,7 +24,8 @@ import {
 import { AmbulanceFormSheet } from "@/components/ambulances/AmbulanceFormSheet";
 
 export default function AmbulancesPage() {
-  const { ambulances, deleteAmbulance } = useAppData();
+  const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
+  const { ambulances, deleteAmbulance, getAllAmbulancesCount } = useAppData();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingAmbulance, setEditingAmbulance] = useState<Ambulance | null>(null);
 
@@ -43,15 +46,28 @@ export default function AmbulancesPage() {
     return { text: "Lista", Icon: CheckCircle, color: "text-green-500", pathSuffix: "review" }; // All complete, default to review view
   }
 
+  const canManageAmbulances = user?.role === 'admin';
+  const totalAmbulancesInSystem = getAllAmbulancesCount();
+
+  if (authLoading) {
+    return <div className="flex justify-center items-center h-64"><Info className="h-8 w-8 animate-pulse" /> <p className="ml-2">Cargando datos de usuario...</p></div>;
+  }
+
   return (
     <div>
       <PageHeader
         title="Gestionar Ambulancias"
-        description="Ver, añadir, editar o eliminar registros de ambulancias."
+        description={
+          canManageAmbulances 
+            ? `Ver, añadir, editar o eliminar registros de ambulancias. Total en sistema: ${totalAmbulancesInSystem}`
+            : (ambulances.length > 0 ? `Viendo tu ambulancia asignada: ${ambulances[0].name}` : "No tienes una ambulancia asignada.")
+        }
         action={
-          <Button onClick={handleAddNew}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Ambulancia
-          </Button>
+          canManageAmbulances ? (
+            <Button onClick={handleAddNew}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Ambulancia
+            </Button>
+          ) : null
         }
       />
 
@@ -59,14 +75,22 @@ export default function AmbulancesPage() {
         <Card className="text-center py-12">
           <CardHeader>
             <AmbulanceIcon className="mx-auto h-16 w-16 text-muted-foreground" />
-            <CardTitle className="mt-4">No se encontraron Ambulancias</CardTitle>
-            <CardDescription>Comienza añadiendo tu primera ambulancia.</CardDescription>
+            <CardTitle className="mt-4">
+              {canManageAmbulances ? "No se encontraron Ambulancias" : "No tienes una Ambulancia Asignada"}
+            </CardTitle>
+            <CardDescription>
+              {canManageAmbulances 
+                ? "Comienza añadiendo tu primera ambulancia." 
+                : "Por favor, contacta a un administrador para que te asigne una ambulancia."}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button onClick={handleAddNew}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Añadir Ambulancia
-            </Button>
-          </CardContent>
+          {canManageAmbulances && (
+            <CardContent>
+              <Button onClick={handleAddNew}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Añadir Ambulancia
+              </Button>
+            </CardContent>
+          )}
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -91,9 +115,9 @@ export default function AmbulancesPage() {
               </CardHeader>
               <CardContent className="flex-grow">
                 <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>Última Revisión Mecánica: {ambulance.lastMechanicalReview ? format(new Date(ambulance.lastMechanicalReview), 'PPP') : 'N/D'}</p>
-                  <p>Última Limpieza: {ambulance.lastCleaning ? format(new Date(ambulance.lastCleaning), 'PPP') : 'N/D'}</p>
-                  <p>Último Control de Inventario: {ambulance.lastInventoryCheck ? format(new Date(ambulance.lastInventoryCheck), 'PPP') : 'N/D'}</p>
+                  <p>Última Revisión Mecánica: {ambulance.lastMechanicalReview ? format(new Date(ambulance.lastMechanicalReview), 'PPP', { locale: es }) : 'N/D'}</p>
+                  <p>Última Limpieza: {ambulance.lastCleaning ? format(new Date(ambulance.lastCleaning), 'PPP', { locale: es }) : 'N/D'}</p>
+                  <p>Último Control de Inventario: {ambulance.lastInventoryCheck ? format(new Date(ambulance.lastInventoryCheck), 'PPP', { locale: es }) : 'N/D'}</p>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between gap-2 border-t pt-4">
@@ -102,46 +126,50 @@ export default function AmbulancesPage() {
                         {status.text === "Lista" ? "Ver Detalles" : `Iniciar ${status.text}`}
                     </Link>
                  </Button>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => handleEdit(ambulance)}>
-                        <FilePenLine className="h-4 w-4" />
-                        <span className="sr-only">Editar</span>
-                    </Button>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="icon">
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Eliminar</span>
+                {canManageAmbulances && (
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="icon" onClick={() => handleEdit(ambulance)}>
+                            <FilePenLine className="h-4 w-4" />
+                            <span className="sr-only">Editar</span>
                         </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Esto eliminará permanentemente la ambulancia
-                            y todos los datos relacionados.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteAmbulance(ambulance.id)}>
-                            Eliminar
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="icon">
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Eliminar</span>
+                            </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Esto eliminará permanentemente la ambulancia
+                                y todos los datos relacionados.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteAmbulance(ambulance.id)}>
+                                Eliminar
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+                )}
               </CardFooter>
             </Card>
             );
         })}
         </div>
       )}
-      <AmbulanceFormSheet
-        isOpen={isSheetOpen}
-        onOpenChange={setIsSheetOpen}
-        ambulance={editingAmbulance}
-      />
+      {canManageAmbulances && (
+        <AmbulanceFormSheet
+            isOpen={isSheetOpen}
+            onOpenChange={setIsSheetOpen}
+            ambulance={editingAmbulance}
+        />
+      )}
     </div>
   );
 }

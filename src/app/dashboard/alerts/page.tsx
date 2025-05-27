@@ -5,17 +5,19 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppData } from "@/contexts/AppDataContext";
-import type { Alert as AppAlert, Space } from "@/types"; // Renamed to avoid conflict with Lucide Alert
+import type { Alert as AppAlert, Space, Ambulance } from "@/types"; // Renamed to avoid conflict with Lucide Alert
 import { format, parseISO } from "date-fns";
-import { AlertTriangle, Wrench, ShieldAlert, Info, ArchiveBox, PackageWarning } from "lucide-react";
+import { AlertTriangle, Wrench, ShieldAlert, Info, ArchiveBox, PackageWarning, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AlertsPage() {
-  const { alerts: contextAlerts, getAmbulanceById } = useAppData();
+  const { alerts: contextAlerts, getAmbulanceById: getAnyAmbulanceById } = useAppData(); // Renamed to avoid confusion if we introduce a role-aware getAmbulanceById in context
+  const { user, loading: authLoading } = useAuth();
   const [ampularioAlerts, setAmpularioAlerts] = useState<AppAlert[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [allAlerts, setAllAlerts] = useState<AppAlert[]>([]);
@@ -41,7 +43,16 @@ export default function AlertsPage() {
       try {
         const alertsResponse = await fetch('/api/ampulario/alerts');
         if (!alertsResponse.ok) throw new Error('No se pudieron cargar las alertas del Ampulario');
-        const alertsData: AppAlert[] = await alertsResponse.json();
+        let alertsData: AppAlert[] = await alertsResponse.json();
+        
+        // Filter ampulario alerts based on user's assigned ambulance if not admin
+        if (user && user.role !== 'admin' && user.assignedAmbulanceId) {
+           // This part is tricky: ampulario alerts are by space, not directly by ambulance.
+           // For now, ampulario alerts are global. If we need to scope them,
+           // we'd need a link between spaces and ambulances or users.
+           // For simplicity, all users see all ampulario alerts FOR NOW if they can see alerts page.
+        }
+
         setAmpularioAlerts(alertsData);
       } catch (error: any) {
         toast({ title: "Error", description: `No se pudieron cargar las alertas del Ampulario: ${error.message}`, variant: "destructive" });
@@ -49,11 +60,13 @@ export default function AlertsPage() {
         setIsLoadingAmpularioAlerts(false);
       }
     };
-
-    fetchSpacesAndAmpularioAlerts();
-  }, [toast]);
+    if (!authLoading) {
+        fetchSpacesAndAmpularioAlerts();
+    }
+  }, [toast, authLoading, user]);
 
   useEffect(() => {
+    // contextAlerts are already role-aware from AppDataContext
     const combinedAlerts = [...contextAlerts, ...ampularioAlerts];
     const sortedAlerts = combinedAlerts.sort((a, b) => {
         const severityOrder = { high: 0, medium: 1, low: 2 };
@@ -73,6 +86,7 @@ export default function AlertsPage() {
 
     switch (type) {
       case 'review_pending': return <Wrench className={`h-5 w-5 ${colorClass}`} />;
+      case 'cleaning_pending': return <Sparkles className={`h-5 w-5 ${colorClass}`} />;
       case 'expiring_soon': return <ShieldAlert className={`h-5 w-5 ${colorClass}`} />;
       case 'expired_material': return <AlertTriangle className={`h-5 w-5 ${colorClass}`} />;
       case 'ampulario_expiring_soon': return <PackageWarning className={`h-5 w-5 ${colorClass}`} />;
@@ -90,7 +104,7 @@ export default function AlertsPage() {
     }
   }
 
-  const isLoading = isLoadingAmpularioAlerts || isLoadingSpaces;
+  const isLoading = isLoadingAmpularioAlerts || isLoadingSpaces || authLoading;
 
   return (
     <div>
@@ -101,12 +115,12 @@ export default function AlertsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Todas las Alertas</CardTitle>
+          <CardTitle>Todas las Alertas Relevantes</CardTitle>
           <CardDescription>
             {isLoading && "Cargando alertas..."}
             {!isLoading && (allAlerts.length > 0
               ? `Mostrando ${allAlerts.length} alerta(s).`
-              : "No hay alertas activas. ¡El sistema funciona correctamente!")}
+              : "No hay alertas activas para tu vista. ¡El sistema funciona correctamente!")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -130,7 +144,9 @@ export default function AlertsPage() {
                 </TableHeader>
                 <TableBody>
                   {allAlerts.map((alert) => {
-                    const ambulance = alert.ambulanceId ? getAmbulanceById(alert.ambulanceId) : null;
+                    // Use getAnyAmbulanceById because contextAlerts are already filtered,
+                    // but we need the name if it exists for display.
+                    const ambulance: Ambulance | undefined = alert.ambulanceId ? getAnyAmbulanceById(alert.ambulanceId) : undefined;
                     const space = alert.spaceId ? spaces.find(s => s.id === alert.spaceId) : null;
                     const contextName = ambulance 
                                         ? ambulance.name 
@@ -151,7 +167,7 @@ export default function AlertsPage() {
                             {severityText(alert.severity)}
                           </span>
                         </TableCell>
-                        <TableCell>{format(parseISO(alert.createdAt), 'PPP')}</TableCell>
+                        <TableCell>{format(parseISO(alert.createdAt), 'PPP', {locale: es})}</TableCell>
                         <TableCell className="text-right">
                           {alert.ambulanceId && (
                             <Button variant="outline" size="sm" asChild>
@@ -174,7 +190,7 @@ export default function AlertsPage() {
             <div className="text-center py-10">
               <Info className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-lg font-medium">¡Todo en orden!</p>
-              <p className="text-muted-foreground">No hay alertas pendientes en este momento.</p>
+              <p className="text-muted-foreground">No hay alertas pendientes para tu vista actual.</p>
             </div>
           )}
         </CardContent>
