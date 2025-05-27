@@ -21,7 +21,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const mockUsers: User[] = [
-  { id: 'user1', name: 'Dr. García', role: 'reviewer' },
+  { id: 'user1', name: 'Coordinador', role: 'reviewer' },
   { id: 'user2', name: 'Juan Limpieza', role: 'cleaner' },
   { id: 'user3', name: 'Admin Alicia', role: 'admin' },
   { id: 'amb001user', name: 'Ambulancia 01', role: 'reviewer' }, // Example user matching an ambulance name
@@ -83,3 +83,4 @@ export function useAuth() {
   }
   return context;
 }
+

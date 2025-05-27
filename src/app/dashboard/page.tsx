@@ -6,12 +6,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAppData } from "@/contexts/AppDataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
-import { AlertTriangle, Ambulance, Box, CheckCircle, ShieldAlert, Sparkles, Wrench, Info } from "lucide-react";
+import { AlertTriangle, Ambulance, Box, CheckCircle, ShieldAlert, Sparkles, Wrench, Info, Users, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, login, loading: authLoading } = useAuth(); // Added login
   const { alerts, ambulances, getAllAmbulancesCount } = useAppData(); // Use 'ambulances' which is now role-aware
 
   const highSeverityAlerts = alerts.filter(alert => alert.severity === 'high');
@@ -56,6 +56,26 @@ export default function DashboardPage() {
         title={`¡Bienvenido, ${user?.name || 'Usuario'}!`}
         description={pageDescription}
       />
+
+      {user?.role === 'admin' && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Users className="h-6 w-6" /> Cambio Rápido de Usuario (Admin)</CardTitle>
+            <CardDescription>Prueba la aplicación desde la perspectiva de diferentes roles.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={() => login('Admin Alicia')} variant="secondary" className="flex-1">
+              <LogIn className="mr-2 h-4 w-4" /> Iniciar como Admin Alicia (Admin)
+            </Button>
+            <Button onClick={() => login('Ambulancia 01')} variant="outline" className="flex-1">
+             <LogIn className="mr-2 h-4 w-4" /> Iniciar como Ambulancia 01 (Asignado)
+            </Button>
+            <Button onClick={() => login('Coordinador')} variant="outline" className="flex-1">
+              <LogIn className="mr-2 h-4 w-4" /> Iniciar como Coordinador (No Asignado)
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -181,3 +201,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

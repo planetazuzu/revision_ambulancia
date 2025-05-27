@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -34,7 +35,7 @@ export default function LoginForm() {
             <Label htmlFor="name">Usuario</Label>
             <Input
               id="name"
-              placeholder="ej. Dr. García"
+              placeholder="ej. Coordinador, Admin Alicia"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -60,3 +61,4 @@ export default function LoginForm() {
     </Card>
   );
 }
+
