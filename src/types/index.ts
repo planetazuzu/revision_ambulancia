@@ -1,4 +1,5 @@
 
+
 export interface User {
   id: string;
   name: string;
@@ -108,4 +109,43 @@ export interface WorkflowStep {
   isCompleted: (ambulance: Ambulance) => boolean;
   key: string; // Added key for easier mapping to Ambulance properties
   isNextStep?: boolean;
+}
+
+// --- Tipos para el Control Diario del Vehículo ---
+export type FuelLevel = 'Lleno' | '3/4' | '1/2' | '1/4' | 'Reserva' | 'Vacío';
+export type TyrePressureStatus = 'OK' | 'Baja' | 'Alta' | 'Revisar';
+export type SimplePresenceStatus = 'Presente' | 'Ausente';
+export type EquipmentStatus = 'Operacional' | 'Defectuoso' | 'Ausente';
+export type YesNoStatus = 'Sí' | 'No';
+
+export interface ExteriorCornerCheck {
+  notes?: string;
+  photoTaken?: boolean; // Placeholder for actual photo
+}
+
+export interface DailyVehicleCheck {
+  id: string;
+  ambulanceId: string;
+  driverFirstName: string;
+  driverLastName: string;
+  checkDate: string; // ISO Date string
+  ambulanceNumber: string; // Redundant if we have ambulanceId, but requested
+  paxBagNumber: string;
+  paxFolderPresent: YesNoStatus;
+  
+  exteriorFrontRight: ExteriorCornerCheck;
+  exteriorFrontLeft: ExteriorCornerCheck;
+  exteriorRearRight: ExteriorCornerCheck;
+  exteriorRearLeft: ExteriorCornerCheck;
+
+  fuelLevel: FuelLevel;
+  tyrePressureStatus: TyrePressureStatus;
+  ambulanceRegistrationPresent: SimplePresenceStatus;
+  greenCardInsurancePresent: SimplePresenceStatus;
+  abnAmroMaestroCardPresent: SimplePresenceStatus;
+  utaTankCardPresent: SimplePresenceStatus;
+  ipadStatus: EquipmentStatus;
+
+  additionalNotes?: string;
+  submittedByUserId: string;
 }

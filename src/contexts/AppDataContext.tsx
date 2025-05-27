@@ -1,7 +1,8 @@
 
+
 "use client";
 
-import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert } from '@/types';
+import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, DailyVehicleCheck } from '@/types';
 import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale'; 
@@ -10,11 +11,11 @@ import { useAuth } from './AuthContext';
 interface AppDataContextType {
   ambulances: Ambulance[];
   getAmbulanceById: (id: string) => Ambulance | undefined;
-  getAmbulanceByName: (name: string) => Ambulance | undefined; // New
+  getAmbulanceByName: (name: string) => Ambulance | undefined;
   addAmbulance: (ambulance: Omit<Ambulance, 'id' | 'mechanicalReviewCompleted' | 'cleaningCompleted' | 'inventoryCompleted'>) => void;
   updateAmbulance: (ambulance: Ambulance) => void;
   deleteAmbulance: (id: string) => void;
-  updateAmbulanceCheckInDetails: (ambulanceId: string, kilometers: number, userId: string) => void; // New
+  updateAmbulanceCheckInDetails: (ambulanceId: string, kilometers: number, userId: string) => void;
 
   mechanicalReviews: MechanicalReview[];
   getMechanicalReviewByAmbulanceId: (ambulanceId: string) => MechanicalReview | undefined;
@@ -41,6 +42,10 @@ interface AppDataContextType {
 
   updateAmbulanceWorkflowStep: (ambulanceId: string, step: 'mechanical' | 'cleaning' | 'inventory', status: boolean) => void;
   getAllAmbulancesCount: () => number;
+
+  dailyVehicleChecks: DailyVehicleCheck[];
+  getDailyVehicleCheckByAmbulanceId: (ambulanceId: string) => DailyVehicleCheck | undefined; // Assuming one latest per ambulance for simplicity
+  saveDailyVehicleCheck: (check: Omit<DailyVehicleCheck, 'id'>) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -72,6 +77,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [consumableMaterials, setConsumableMaterials] = useState<ConsumableMaterial[]>(initialConsumables);
   const [nonConsumableMaterials, setNonConsumableMaterials] = useState<NonConsumableMaterial[]>(initialNonConsumables);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [dailyVehicleChecks, setDailyVehicleChecks] = useState<DailyVehicleCheck[]>([]);
 
   const accessibleAmbulances = useMemo(() => {
     if (authLoading || !user) return [];
@@ -99,7 +105,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
   const getAmbulanceByName = (name: string): Ambulance | undefined => {
-    // This search should be case-insensitive for better usability
     return allAmbulancesData.find(a => a.name.toLowerCase() === name.toLowerCase());
   };
   
@@ -152,6 +157,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setCleaningLogs(prev => prev.filter(cl => cl.ambulanceId !== id));
     setConsumableMaterials(prev => prev.filter(cm => cm.ambulanceId !== id));
     setNonConsumableMaterials(prev => prev.filter(ncm => ncm.ambulanceId !== id));
+    setDailyVehicleChecks(prev => prev.filter(dvc => dvc.ambulanceId !== id));
   };
 
   const getMechanicalReviewByAmbulanceId = (ambulanceId: string) => {
@@ -275,6 +281,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (step === 'cleaning') updatedAmb.cleaningCompleted = status;
         if (step === 'inventory') updatedAmb.inventoryCompleted = status;
 
+        // Reset subsequent steps if a previous one is marked incomplete
         if (step === 'mechanical' && !status) {
           updatedAmb.cleaningCompleted = false;
           updatedAmb.inventoryCompleted = false;
@@ -282,10 +289,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (step === 'cleaning' && !status) {
           updatedAmb.inventoryCompleted = false;
         }
+        // If inventory is completed, reset the cycle for this ambulance
         if (step === 'inventory' && status) {
             updatedAmb.mechanicalReviewCompleted = false;
             updatedAmb.cleaningCompleted = false;
-            updatedAmb.inventoryCompleted = false;
+            updatedAmb.inventoryCompleted = false; // This effectively means the cycle is done and ready for a new one.
             updatedAmb.lastInventoryCheck = new Date().toISOString();
         }
         return updatedAmb;
@@ -294,12 +302,52 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // --- Daily Vehicle Checks ---
+  const getDailyVehicleCheckByAmbulanceId = (ambulanceId: string): DailyVehicleCheck | undefined => {
+    if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
+      return undefined;
+    }
+    // For simplicity, return the latest check for an ambulance. Could be a list.
+    const checksForAmbulance = dailyVehicleChecks.filter(c => c.ambulanceId === ambulanceId);
+    return checksForAmbulance.sort((a, b) => new Date(b.checkDate).getTime() - new Date(a.checkDate).getTime())[0];
+  };
+
+  const saveDailyVehicleCheck = (checkData: Omit<DailyVehicleCheck, 'id'>) => {
+    if (!user) {
+        console.warn("Usuario no autenticado intentando guardar control diario.");
+        return;
+    }
+    if (user.role !== 'coordinador' && (user.role === 'usuario' && user.assignedAmbulanceId !== checkData.ambulanceId)) {
+       console.warn("Intento no autorizado de guardar control diario.");
+       return;
+    }
+    const existingCheckIndex = dailyVehicleChecks.findIndex(c => c.ambulanceId === checkData.ambulanceId && c.checkDate.startsWith(checkData.checkDate.substring(0,10))); // Check if one exists for the same day
+
+    const newCheck: DailyVehicleCheck = {
+      ...checkData,
+      id: `dvc-${Date.now()}`,
+      submittedByUserId: user.id,
+    };
+
+    if (existingCheckIndex > -1) {
+      setDailyVehicleChecks(prev => {
+        const updatedChecks = [...prev];
+        updatedChecks[existingCheckIndex] = newCheck; // Replace existing check for the day
+        return updatedChecks;
+      });
+    } else {
+      setDailyVehicleChecks(prev => [newCheck, ...prev]);
+    }
+  };
+
+
   const generateAlerts = () => {
     if (authLoading) return;
     const newAlerts: Alert[] = [];
     const today = new Date();
 
     accessibleAmbulances.forEach(ambulance => {
+      // Example: Alert if mechanical review is due (older than 14 days or never done)
       if (!ambulance.mechanicalReviewCompleted && (!ambulance.lastMechanicalReview || new Date(ambulance.lastMechanicalReview) < new Date(today.getTime() - 14*24*60*60*1000) )) {
         newAlerts.push({
           id: `alert-mr-${ambulance.id}`,
@@ -310,6 +358,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           createdAt: today.toISOString(),
         });
       }
+       // Example: Alert if cleaning is due (older than 7 days or never done) AND mechanical review is complete
        if (ambulance.mechanicalReviewCompleted && !ambulance.cleaningCompleted && (!ambulance.lastCleaning || new Date(ambulance.lastCleaning) < new Date(today.getTime() - 7*24*60*60*1000) )) {
         newAlerts.push({
           id: `alert-cl-${ambulance.id}`,
@@ -327,7 +376,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     
     relevantConsumableMaterials.forEach(material => {
       const expiryDate = new Date(material.expiryDate);
-      const ambulance = allAmbulancesData.find(a=> a.id === material.ambulanceId);
+      const ambulance = allAmbulancesData.find(a=> a.id === material.ambulanceId); // Use allAmbulancesData to get name
       const ambulanceName = ambulance ? ambulance.name : 'Ambulancia Desconocida';
       const daysUntilExpiry = (expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
 
@@ -341,7 +390,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           severity: 'high',
           createdAt: today.toISOString(),
         });
-      } else if (daysUntilExpiry <= 7) { 
+      } else if (daysUntilExpiry <= 7) { // Consider 7 days as "expiring soon" for in-ambulance materials
         newAlerts.push({
           id: `alert-expsoon-${material.id}`,
           type: 'expiring_soon',
@@ -361,7 +410,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         generateAlerts();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, authLoading]); // Dependencies should be correct now
+  }, [accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, authLoading]);
 
   const contextValue = {
     ambulances: accessibleAmbulances,
@@ -377,7 +426,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     nonConsumableMaterials, getNonConsumableMaterialsByAmbulanceId, addNonConsumableMaterial, updateNonConsumableMaterial, deleteNonConsumableMaterial,
     alerts, generateAlerts,
     updateAmbulanceWorkflowStep,
-    getAllAmbulancesCount
+    getAllAmbulancesCount,
+    dailyVehicleChecks, getDailyVehicleCheckByAmbulanceId, saveDailyVehicleCheck,
   };
 
   return (
