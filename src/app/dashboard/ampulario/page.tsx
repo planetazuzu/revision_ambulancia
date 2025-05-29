@@ -29,10 +29,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
 
-const DEFAULT_SPACE_ID = 'space23'; // "Ampulario Principal" - Asumiendo que este ID existirá o será el primero
+const DEFAULT_SPACE_ID = 'space23'; 
 
 export default function AmpularioPage() {
+  const { user } = useAuth(); // Obtener el usuario del contexto de autenticación
   const [materials, setMaterials] = useState<AmpularioMaterial[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>(DEFAULT_SPACE_ID);
@@ -48,6 +50,7 @@ export default function AmpularioPage() {
   const [isSpaceFormOpen, setIsSpaceFormOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 
+  const isCoordinator = user?.role === 'coordinador'; // Variable para verificar el rol
 
   const fetchSpaces = useCallback(async (resetSelectedSpace = false) => {
     setIsLoadingSpaces(true);
@@ -67,7 +70,7 @@ export default function AmpularioPage() {
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "No se pudieron cargar los espacios.", variant: "destructive" });
-      setSpaces([]); // Clear spaces on error
+      setSpaces([]); 
       setSelectedSpaceId('');
     } finally {
       setIsLoadingSpaces(false);
@@ -76,11 +79,11 @@ export default function AmpularioPage() {
 
 
   const fetchMaterials = useCallback(async () => {
-    if (!selectedSpaceId && spaces.length > 0) { // If no space is selected but spaces are available, pick first
+    if (!selectedSpaceId && spaces.length > 0) { 
         setSelectedSpaceId(spaces[0].id);
-        return; // fetchMaterials will be re-triggered by selectedSpaceId change
+        return; 
     }
-    if (!selectedSpaceId && spaces.length === 0) { // No spaces, no materials to fetch
+    if (!selectedSpaceId && spaces.length === 0) { 
         setMaterials([]);
         setIsLoadingMaterials(false);
         return;
@@ -107,10 +110,10 @@ export default function AmpularioPage() {
 
   useEffect(() => {
     fetchSpaces();
-  }, [fetchSpaces]); // fetchSpaces has its own dependencies
+  }, [fetchSpaces]); 
 
   useEffect(() => {
-    if (!isLoadingSpaces) { // Only fetch materials once spaces are loaded (or attempted)
+    if (!isLoadingSpaces) { 
         fetchMaterials();
     }
   }, [fetchMaterials, isLoadingSpaces]);
@@ -133,15 +136,15 @@ export default function AmpularioPage() {
         throw new Error(result.error || 'Falló la importación del CSV. Detalles: ' + (result.details || []).join(', '));
       }
       toast({ title: "Importación Exitosa", description: `${result.imported} materiales importados.` });
-      fetchMaterials(); // Refresh list
+      fetchMaterials(); 
     } catch (error: any) {
       toast({ title: "Error de Importación", description: error.message, variant: "destructive" });
     } finally {
-        event.target.value = ''; // Reset file input
+        event.target.value = ''; 
     }
   };
 
-  // Material form handlers
+  
   const handleAddNewMaterial = () => {
     setEditingMaterial(null);
     setIsMaterialFormOpen(true);
@@ -160,13 +163,13 @@ export default function AmpularioPage() {
         throw new Error(errorData.error || 'No se pudo eliminar el material.');
       }
       toast({ title: "Material Eliminado", description: "El material ha sido eliminado." });
-      fetchMaterials(); // Refresh list
+      fetchMaterials(); 
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
 
-  // Space form handlers
+  
   const handleAddNewSpace = () => {
     setEditingSpace(null);
     setIsSpaceFormOpen(true);
@@ -185,7 +188,7 @@ export default function AmpularioPage() {
         throw new Error(errorData.error || 'No se pudo eliminar el espacio. Asegúrate de que no esté en uso.');
       }
       toast({ title: "Espacio Eliminado", description: "El espacio ha sido eliminado." });
-      await fetchSpaces(true); // Refresh list of spaces and potentially reset selectedSpaceId
+      await fetchSpaces(true); 
     } catch (error: any) {
       toast({ title: "Error al Eliminar Espacio", description: error.message, variant: "destructive" });
     }
@@ -231,17 +234,19 @@ export default function AmpularioPage() {
                         <CardTitle>Filtros de Materiales</CardTitle>
                         <CardDescription>Refinar la lista de materiales para {isLoadingSpaces ? "..." : (spaces.find(s => s.id === selectedSpaceId)?.name || 'ningún espacio seleccionado')}.</CardDescription>
                     </div>
-                    <div className="flex gap-2">
-                        <Button onClick={handleAddNewMaterial}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Añadir Material
-                        </Button>
-                        <Button asChild variant="outline">
-                        <label htmlFor="csv-upload" className="cursor-pointer">
-                            <Upload className="mr-2 h-4 w-4" /> Importar CSV
-                            <input id="csv-upload" type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
-                        </label>
-                        </Button>
-                    </div>
+                    {isCoordinator && ( // Solo mostrar botones si es coordinador
+                      <div className="flex gap-2">
+                          <Button onClick={handleAddNewMaterial}>
+                              <PlusCircle className="mr-2 h-4 w-4" /> Añadir Material
+                          </Button>
+                          <Button asChild variant="outline">
+                          <label htmlFor="csv-upload" className="cursor-pointer flex items-center">
+                              <Upload className="mr-2 h-4 w-4" /> Importar CSV
+                              <input id="csv-upload" type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                          </label>
+                          </Button>
+                      </div>
+                    )}
                 </div>
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row gap-4">
@@ -312,12 +317,12 @@ export default function AmpularioPage() {
                       <TableHead>Cantidad</TableHead>
                       <TableHead>Vía</TableHead>
                       <TableHead>Fecha Caducidad</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      {isCoordinator && <TableHead className="text-right">Acciones</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {isLoadingMaterials ? (
-                      <TableRow><TableCell colSpan={7} className="h-24 text-center">Cargando materiales...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={isCoordinator ? 7 : 6} className="h-24 text-center">Cargando materiales...</TableCell></TableRow>
                     ) : materials.length > 0 ? (
                       materials.map((material) => {
                         let expiryStatusClass = '';
@@ -340,40 +345,42 @@ export default function AmpularioPage() {
                             <TableCell>
                               {material.expiry_date ? format(parseISO(material.expiry_date), 'PPP') : 'N/D'}
                             </TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="icon" onClick={() => handleEditMaterial(material)} className="mr-1">
-                                <Edit className="h-4 w-4" />
-                                <span className="sr-only">Editar</span>
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80">
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Eliminar</span>
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Esta acción no se puede deshacer. Esto eliminará permanentemente el material "{material.name}".
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteMaterial(material.id)}>
-                                      Eliminar
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </TableCell>
+                            {isCoordinator && (
+                              <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" onClick={() => handleEditMaterial(material)} className="mr-1">
+                                  <Edit className="h-4 w-4" />
+                                  <span className="sr-only">Editar</span>
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80">
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="sr-only">Eliminar</span>
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Esta acción no se puede deshacer. Esto eliminará permanentemente el material "{material.name}".
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDeleteMaterial(material.id)}>
+                                        Eliminar
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </TableCell>
+                            )}
                           </TableRow>
                         );
                       })
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
+                        <TableCell colSpan={isCoordinator ? 7 : 6} className="h-24 text-center">
                           No se encontraron materiales para los filtros actuales.
                         </TableCell>
                       </TableRow>
@@ -394,9 +401,11 @@ export default function AmpularioPage() {
                             <CardTitle>Espacios de Almacenamiento</CardTitle>
                             <CardDescription>Gestionar los diferentes lugares donde se almacenan los materiales del ampulario.</CardDescription>
                         </div>
-                        <Button onClick={handleAddNewSpace}>
-                            <ArchiveRestore className="mr-2 h-4 w-4" /> Añadir Nuevo Espacio
-                        </Button>
+                        {isCoordinator && ( // Solo mostrar botón si es coordinador
+                          <Button onClick={handleAddNewSpace}>
+                              <ArchiveRestore className="mr-2 h-4 w-4" /> Añadir Nuevo Espacio
+                          </Button>
+                        )}
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -406,51 +415,53 @@ export default function AmpularioPage() {
                                 <TableRow>
                                     <TableHead>Nombre del Espacio</TableHead>
                                     <TableHead>ID</TableHead>
-                                    <TableHead className="text-right">Acciones</TableHead>
+                                    {isCoordinator && <TableHead className="text-right">Acciones</TableHead>}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoadingSpaces ? (
-                                     <TableRow><TableCell colSpan={3} className="h-24 text-center">Cargando espacios...</TableCell></TableRow>
+                                     <TableRow><TableCell colSpan={isCoordinator ? 3 : 2} className="h-24 text-center">Cargando espacios...</TableCell></TableRow>
                                 ) : spaces.length > 0 ? (
                                     spaces.map((space) => (
                                         <TableRow key={space.id}>
                                             <TableCell className="font-medium">{space.name}</TableCell>
                                             <TableCell className="text-muted-foreground">{space.id}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" onClick={() => handleEditSpace(space)} className="mr-1">
-                                                    <Edit className="h-4 w-4" />
-                                                    <span className="sr-only">Editar Espacio</span>
-                                                </Button>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80">
-                                                        <Trash2 className="h-4 w-4" />
-                                                        <span className="sr-only">Eliminar Espacio</span>
-                                                    </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>¿Estás seguro de eliminar el espacio "{space.name}"?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                        Esta acción no se puede deshacer. Solo se puede eliminar un espacio si no está siendo utilizado por ningún material.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteSpace(space.id)}>
-                                                        Eliminar Espacio
-                                                        </AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </TableCell>
+                                            {isCoordinator && (
+                                              <TableCell className="text-right">
+                                                  <Button variant="ghost" size="icon" onClick={() => handleEditSpace(space)} className="mr-1">
+                                                      <Edit className="h-4 w-4" />
+                                                      <span className="sr-only">Editar Espacio</span>
+                                                  </Button>
+                                                  <AlertDialog>
+                                                      <AlertDialogTrigger asChild>
+                                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80">
+                                                          <Trash2 className="h-4 w-4" />
+                                                          <span className="sr-only">Eliminar Espacio</span>
+                                                      </Button>
+                                                      </AlertDialogTrigger>
+                                                      <AlertDialogContent>
+                                                      <AlertDialogHeader>
+                                                          <AlertDialogTitle>¿Estás seguro de eliminar el espacio "{space.name}"?</AlertDialogTitle>
+                                                          <AlertDialogDescription>
+                                                          Esta acción no se puede deshacer. Solo se puede eliminar un espacio si no está siendo utilizado por ningún material.
+                                                          </AlertDialogDescription>
+                                                      </AlertDialogHeader>
+                                                      <AlertDialogFooter>
+                                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                          <AlertDialogAction onClick={() => handleDeleteSpace(space.id)}>
+                                                          Eliminar Espacio
+                                                          </AlertDialogAction>
+                                                      </AlertDialogFooter>
+                                                      </AlertDialogContent>
+                                                  </AlertDialog>
+                                              </TableCell>
+                                            )}
                                         </TableRow>
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="h-24 text-center">
-                                            No hay espacios de almacenamiento definidos. Comienza añadiendo uno.
+                                        <TableCell colSpan={isCoordinator ? 3 : 2} className="h-24 text-center">
+                                            No hay espacios de almacenamiento definidos. {isCoordinator ? "Comienza añadiendo uno." : ""}
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -482,7 +493,7 @@ export default function AmpularioPage() {
             isOpen={isSpaceFormOpen}
             onOpenChange={setIsSpaceFormOpen}
             onSave={async () => {
-                await fetchSpaces(true); // Pass true to potentially reset selectedSpaceId
+                await fetchSpaces(true); 
                 setIsSpaceFormOpen(false);
             }}
         />
