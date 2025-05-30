@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from 'react';
@@ -12,7 +13,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import type { ConsumableMaterial, NonConsumableMaterial, Ambulance } from '@/types';
+import type { ConsumableMaterial, NonConsumableMaterial, Ambulance, AmbulanceStorageLocation } from '@/types';
 import { useAppData } from '@/contexts/AppDataContext';
 import { cn } from '@/lib/utils';
 import { CalendarIcon } from 'lucide-react';
@@ -25,12 +26,14 @@ const consumableSchema = z.object({
   reference: z.string().min(1, "La referencia es obligatoria"),
   quantity: z.coerce.number().min(0, "La cantidad no puede ser negativa"),
   expiryDate: z.date({ required_error: "La fecha de caducidad es obligatoria." }),
+  storageLocation: z.string().optional(),
 });
 
 const nonConsumableSchema = z.object({
   name: z.string().min(1, "El nombre es obligatorio"),
   serialNumber: z.string().min(1, "El número de serie es obligatorio"),
   status: z.enum(['Operacional', 'Necesita Reparación', 'Fuera de Servicio'], { errorMap: () => ({ message: "Debe seleccionar un estado."}) }),
+  storageLocation: z.string().optional(),
 });
 
 interface MaterialFormProps {
@@ -42,8 +45,10 @@ interface MaterialFormProps {
 }
 
 export function MaterialForm({ ambulance, materialType, material, isOpen, onOpenChange }: MaterialFormProps) {
-  const { addConsumableMaterial, updateConsumableMaterial, addNonConsumableMaterial, updateNonConsumableMaterial } = useAppData();
+  const { addConsumableMaterial, updateConsumableMaterial, addNonConsumableMaterial, updateNonConsumableMaterial, getAmbulanceStorageLocations } = useAppData();
   const { toast } = useToast();
+
+  const ambulanceStorageOptions = getAmbulanceStorageLocations();
 
   const currentSchema = materialType === 'consumable' ? consumableSchema : nonConsumableSchema;
   type CurrentFormValues = z.infer<typeof currentSchema>;
@@ -59,15 +64,19 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
           form.reset({
             ...material,
             expiryDate: new Date(material.expiryDate),
+            storageLocation: material.storageLocation || "",
           } as CurrentFormValues);
         } else {
-          form.reset(material as CurrentFormValues);
+          form.reset({
+            ...material,
+            storageLocation: material.storageLocation || "",
+          } as CurrentFormValues);
         }
       } else {
         form.reset(
           materialType === 'consumable'
-            ? { name: '', reference: '', quantity: 0, expiryDate: new Date() }
-            : { name: '', serialNumber: '', status: 'Operacional' }
+            ? { name: '', reference: '', quantity: 0, expiryDate: new Date(), storageLocation: "" }
+            : { name: '', serialNumber: '', status: 'Operacional', storageLocation: "" }
         );
       }
     }
@@ -77,18 +86,29 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
     const commonToastParams = { title: material ? "Material Actualizado" : "Material Añadido" };
     if (materialType === 'consumable') {
       const consumableData = data as z.infer<typeof consumableSchema>;
+      const payload = {
+        ...consumableData,
+        ambulanceId: ambulance.id,
+        expiryDate: consumableData.expiryDate.toISOString(),
+        storageLocation: consumableData.storageLocation || undefined,
+      };
       if (material) {
-        updateConsumableMaterial({ ...material as ConsumableMaterial, ...consumableData, expiryDate: consumableData.expiryDate.toISOString() });
+        updateConsumableMaterial({ ...material as ConsumableMaterial, ...payload });
       } else {
-        addConsumableMaterial({ ...consumableData, ambulanceId: ambulance.id, expiryDate: consumableData.expiryDate.toISOString() });
+        addConsumableMaterial(payload);
       }
       toast({...commonToastParams, description: `${consumableData.name} (Consumible) procesado.`});
     } else {
       const nonConsumableData = data as z.infer<typeof nonConsumableSchema>;
+       const payload = {
+        ...nonConsumableData,
+        ambulanceId: ambulance.id,
+        storageLocation: nonConsumableData.storageLocation || undefined,
+      };
       if (material) {
-        updateNonConsumableMaterial({ ...material as NonConsumableMaterial, ...nonConsumableData });
+        updateNonConsumableMaterial({ ...material as NonConsumableMaterial, ...payload });
       } else {
-        addNonConsumableMaterial({ ...nonConsumableData, ambulanceId: ambulance.id });
+        addNonConsumableMaterial(payload);
       }
       toast({...commonToastParams, description: `${nonConsumableData.name} (No Consumible) procesado.`});
     }
@@ -103,7 +123,7 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{material ? 'Editar' : 'Añadir'} Material {materialType === 'consumable' ? 'Consumible' : 'No Consumible'}</DialogTitle>
           <DialogDescription>
@@ -228,6 +248,31 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
                 />
               </>
             )}
+
+            <FormField
+              control={form.control}
+              name="storageLocation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ubicación de Almacenamiento (Opcional)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar ubicación..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">-- Sin especificar --</SelectItem>
+                      {ambulanceStorageOptions.map(location => (
+                        <SelectItem key={location} value={location}>{location}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <DialogFooter className="pt-4">
               <DialogClose asChild>
                 <Button type="button" variant="outline">Cancelar</Button>

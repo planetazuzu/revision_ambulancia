@@ -1,7 +1,8 @@
 
 "use client";
 
-import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo } from '@/types';
+import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation } from '@/types';
+import { ambulanceStorageLocations } from '@/types'; // Importar la lista
 import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale'; 
@@ -45,6 +46,8 @@ interface AppDataContextType {
   revisionesDiariasVehiculo: RevisionDiariaVehiculo[];
   getRevisionDiariaVehiculoByAmbulanceId: (ambulanceId: string) => RevisionDiariaVehiculo | undefined;
   saveRevisionDiariaVehiculo: (check: Omit<RevisionDiariaVehiculo, 'id'>) => void;
+  
+  getAmbulanceStorageLocations: () => readonly AmbulanceStorageLocation[]; // Nueva función
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -76,14 +79,18 @@ export const initialAmbulances: Ambulance[] = [
 ];
 
 const initialConsumables: ConsumableMaterial[] = [
-    { id: 'cons001', ambulanceId: 'amb001', name: 'Vendas', reference: 'BNDG-01', quantity: 50, expiryDate: new Date(Date.now() + 30*24*60*60*1000).toISOString() },
-    { id: 'cons002', ambulanceId: 'amb001', name: 'Solución Salina', reference: 'SLN-05', quantity: 10, expiryDate: new Date(Date.now() - 5*24*60*60*1000).toISOString() }, // Expired
-    { id: 'cons003', ambulanceId: 'amb002', name: 'Guantes (Caja)', reference: 'GLV-M', quantity: 5, expiryDate: new Date(Date.now() + 5*24*60*60*1000).toISOString() }, // Expiring soon
+    { id: 'cons001', ambulanceId: 'amb001', name: 'Vendas Estériles (paquete 10)', reference: 'BNDG-01', quantity: 50, expiryDate: new Date(Date.now() + 30*24*60*60*1000).toISOString(), storageLocation: "Mochila Principal (Rojo)" },
+    { id: 'cons002', ambulanceId: 'amb001', name: 'Solución Salina 500ml', reference: 'SLN-05', quantity: 10, expiryDate: new Date(Date.now() - 5*24*60*60*1000).toISOString(), storageLocation: "Mochila Circulatorio (Amarillo)" }, // Expired
+    { id: 'cons003', ambulanceId: 'amb002', name: 'Guantes Estériles Talla M (Caja)', reference: 'GLV-M', quantity: 5, expiryDate: new Date(Date.now() + 5*24*60*60*1000).toISOString(), storageLocation: "Cajón Lateral Superior Izq." }, // Expiring soon
+    { id: 'cons004', ambulanceId: 'amb001', name: 'Mascarilla RCP Adulto', reference: 'RCP-AD', quantity: 2, expiryDate: new Date(Date.now() + 100*24*60*60*1000).toISOString(), storageLocation: "Mochila Vía Aérea (Azul)" },
+    { id: 'cons005', ambulanceId: 'amb001', name: 'Apósitos Adhesivos (caja)', reference: 'APOS-MIX', quantity: 1, expiryDate: new Date(Date.now() + 60*24*60*60*1000).toISOString() }, // Sin ubicación asignada
 ];
 
 const initialNonConsumables: NonConsumableMaterial[] = [
-    { id: 'noncons001', ambulanceId: 'amb001', name: 'Desfibrilador', serialNumber: 'DEFIB-A001', status: 'Operacional' },
-    { id: 'noncons002', ambulanceId: 'amb002', name: 'Camilla', serialNumber: 'STRCH-B012', status: 'Necesita Reparación' },
+    { id: 'noncons001', ambulanceId: 'amb001', name: 'Desfibrilador Externo Automático (DEA)', serialNumber: 'DEFIB-A001', status: 'Operacional', storageLocation: "Mochila Principal (Rojo)" },
+    { id: 'noncons002', ambulanceId: 'amb002', name: 'Camilla Principal Ruedas', serialNumber: 'STRCH-B012', status: 'Necesita Reparación', storageLocation: "Compartimento Principal Ambulancia" },
+    { id: 'noncons003', ambulanceId: 'amb001', name: 'Pulsioxímetro Portátil', serialNumber: 'PULSI-X07', status: 'Operacional', storageLocation: "Mochila Principal (Rojo)" },
+    { id: 'noncons004', ambulanceId: 'amb001', name: 'Tabla Espinal Larga', serialNumber: 'SPNL-L003', status: 'Operacional' }, // Sin ubicación asignada
 ];
 
 
@@ -359,6 +366,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const getAmbulanceStorageLocations = (): readonly AmbulanceStorageLocation[] => {
+    return ambulanceStorageLocations;
+  };
+
 
   const generateAlerts = () => {
     if (authLoading) return;
@@ -447,6 +458,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     updateAmbulanceWorkflowStep,
     getAllAmbulancesCount,
     revisionesDiariasVehiculo, getRevisionDiariaVehiculoByAmbulanceId, saveRevisionDiariaVehiculo,
+    getAmbulanceStorageLocations,
   };
 
   return (
@@ -463,4 +475,3 @@ export function useAppData() {
   }
   return context;
 }
-

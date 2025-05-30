@@ -57,6 +57,7 @@ export interface ConsumableMaterial {
   quantity: number;
   expiryDate: string; // ISO Date string
   ambulanceId: string;
+  storageLocation?: string; // Nueva propiedad para la ubicación
 }
 
 export type NonConsumableMaterialStatus = 'Operacional' | 'Necesita Reparación' | 'Fuera de Servicio';
@@ -67,6 +68,7 @@ export interface NonConsumableMaterial {
   serialNumber: string;
   status: NonConsumableMaterialStatus;
   ambulanceId: string;
+  storageLocation?: string; // Nueva propiedad para la ubicación
 }
 
 export type MaterialRoute = "IV/IM" | "Nebulizador" | "Oral";
@@ -150,3 +152,19 @@ export interface RevisionDiariaVehiculo {
   submittedByUserId: string;
 }
 
+// Lista de ubicaciones de almacenamiento comunes dentro de una ambulancia
+export const ambulanceStorageLocations = [
+    "Mochila Principal (Rojo)",
+    "Mochila Vía Aérea (Azul)",
+    "Mochila Circulatorio (Amarillo)",
+    "Cajón Lateral Superior Izq.",
+    "Cajón Lateral Inferior Izq.",
+    "Cajón Lateral Superior Der.",
+    "Cajón Lateral Inferior Der.",
+    "Bolsillos Puerta Trasera",
+    "Compartimento Techo Cabina",
+    "Debajo Asiento Acompañante",
+    "Sin Ubicación Específica"
+] as const; // Usar 'as const' para que los strings sean tipos literales
+
+export type AmbulanceStorageLocation = typeof ambulanceStorageLocations[number];
