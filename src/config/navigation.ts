@@ -1,3 +1,4 @@
+
 import { LayoutDashboard, Ambulance, Bell, Wrench, Sparkles, Boxes, Settings, UserCircle, LogOut, Archive } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -12,7 +13,7 @@ export interface NavItem {
 export const mainNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
   { href: '/dashboard/ambulances', label: 'Ambulancias', icon: Ambulance },
-  { href: '/dashboard/ampulario', label: 'Ampulario', icon: Archive },
+  { href: '/dashboard/ampulario', label: 'Gestión de Materiales', icon: Archive },
   { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
 ];
 

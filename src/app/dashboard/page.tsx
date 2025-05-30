@@ -24,8 +24,8 @@ export default function DashboardPage() {
       case 'cleaning_pending': return <Sparkles className="h-5 w-5 text-blue-400" />;
       case 'expiring_soon': return <ShieldAlert className="h-5 w-5 text-yellow-500" />;
       case 'expired_material': return <AlertTriangle className="h-5 w-5 text-red-500" />;
-      case 'ampulario_expiring_soon': return <ShieldAlert className="h-5 w-5 text-yellow-500" />;
-      case 'ampulario_expired_material': return <AlertTriangle className="h-5 w-5 text-red-500" />;
+      case 'ampulario_expiring_soon': return <ShieldAlert className="h-5 w-5 text-yellow-500" />; // Type name in DB remains
+      case 'ampulario_expired_material': return <AlertTriangle className="h-5 w-5 text-red-500" />; // Type name in DB remains
       default: return <AlertTriangle className="h-5 w-5 text-muted-foreground" />;
     }
   };
@@ -58,7 +58,7 @@ export default function DashboardPage() {
         description={pageDescription}
       />
 
-      {user?.role === 'coordinador' && ( // Show only for coordinators
+      {user?.role === 'coordinador' && ( 
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Users className="h-6 w-6" /> Cambio Rápido de Usuario (Coordinador)</CardTitle>
@@ -98,9 +98,10 @@ export default function DashboardPage() {
                             <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>Ver Ambulancia</Link>
                          </Button>
                       )}
-                       {alert.type.startsWith('ampulario_') && (
+                       {alert.type.startsWith('ampulario_') && ( // type name in DB remains
                          <Button variant="link" size="sm" className="p-0 h-auto text-destructive hover:text-destructive/80" asChild>
-                            <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Ampulario</Link>
+                            {/* The target URL /dashboard/ampulario remains the same */}
+                            <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Materiales</Link>
                          </Button>
                        )}
                     </div>
@@ -133,9 +134,10 @@ export default function DashboardPage() {
                             <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>Ver Ambulancia</Link>
                          </Button>
                       )}
-                        {alert.type.startsWith('ampulario_') && (
+                        {alert.type.startsWith('ampulario_') && ( // type name in DB remains
                          <Button variant="link" size="sm" className="p-0 h-auto text-orange-600 hover:text-orange-500" asChild>
-                            <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Ampulario</Link>
+                            {/* The target URL /dashboard/ampulario remains the same */}
+                            <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Materiales</Link>
                          </Button>
                        )}
                     </div>

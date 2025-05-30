@@ -14,21 +14,22 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { es } from 'date-fns/locale';
 
 export default function AlertsPage() {
-  const { alerts: contextAlerts, getAmbulanceById: getAnyAmbulanceById } = useAppData(); // Renamed to avoid confusion if we introduce a role-aware getAmbulanceById in context
+  const { alerts: contextAlerts, getAmbulanceById: getAnyAmbulanceById } = useAppData(); 
   const { user, loading: authLoading } = useAuth();
-  const [ampularioAlerts, setAmpularioAlerts] = useState<AppAlert[]>([]);
+  const [apiAlerts, setApiAlerts] = useState<AppAlert[]>([]); // Renamed from ampularioAlerts
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [allAlerts, setAllAlerts] = useState<AppAlert[]>([]);
-  const [isLoadingAmpularioAlerts, setIsLoadingAmpularioAlerts] = useState(true);
+  const [isLoadingApiAlerts, setIsLoadingApiAlerts] = useState(true); // Renamed
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchSpacesAndAmpularioAlerts = async () => {
+    const fetchSpacesAndApiAlerts = async () => {
       setIsLoadingSpaces(true);
-      setIsLoadingAmpularioAlerts(true);
+      setIsLoadingApiAlerts(true);
       try {
         const spacesResponse = await fetch('/api/spaces');
         if (!spacesResponse.ok) throw new Error('No se pudieron cargar los espacios');
@@ -41,33 +42,25 @@ export default function AlertsPage() {
       }
 
       try {
-        const alertsResponse = await fetch('/api/ampulario/alerts');
-        if (!alertsResponse.ok) throw new Error('No se pudieron cargar las alertas del Ampulario');
+        // The API path /api/ampulario/alerts remains the same for now
+        const alertsResponse = await fetch('/api/ampulario/alerts'); 
+        if (!alertsResponse.ok) throw new Error('No se pudieron cargar las alertas del inventario central');
         let alertsData: AppAlert[] = await alertsResponse.json();
         
-        // Filter ampulario alerts based on user's assigned ambulance if not admin
-        if (user && user.role !== 'admin' && user.assignedAmbulanceId) {
-           // This part is tricky: ampulario alerts are by space, not directly by ambulance.
-           // For now, ampulario alerts are global. If we need to scope them,
-           // we'd need a link between spaces and ambulances or users.
-           // For simplicity, all users see all ampulario alerts FOR NOW if they can see alerts page.
-        }
-
-        setAmpularioAlerts(alertsData);
+        setApiAlerts(alertsData);
       } catch (error: any) {
-        toast({ title: "Error", description: `No se pudieron cargar las alertas del Ampulario: ${error.message}`, variant: "destructive" });
+        toast({ title: "Error", description: `No se pudieron cargar las alertas del inventario central: ${error.message}`, variant: "destructive" });
       } finally {
-        setIsLoadingAmpularioAlerts(false);
+        setIsLoadingApiAlerts(false);
       }
     };
     if (!authLoading) {
-        fetchSpacesAndAmpularioAlerts();
+        fetchSpacesAndApiAlerts();
     }
   }, [toast, authLoading, user]);
 
   useEffect(() => {
-    // contextAlerts are already role-aware from AppDataContext
-    const combinedAlerts = [...contextAlerts, ...ampularioAlerts];
+    const combinedAlerts = [...contextAlerts, ...apiAlerts];
     const sortedAlerts = combinedAlerts.sort((a, b) => {
         const severityOrder = { high: 0, medium: 1, low: 2 };
         if (severityOrder[a.severity] !== severityOrder[b.severity]) {
@@ -76,11 +69,11 @@ export default function AlertsPage() {
         return parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime();
     });
     setAllAlerts(sortedAlerts);
-  }, [contextAlerts, ampularioAlerts]);
+  }, [contextAlerts, apiAlerts]);
 
 
   const getIconForAlertType = (type: AppAlert['type'], severity: AppAlert['severity']) => {
-    let colorClass = "text-muted-foreground"; // Default for low or undefined
+    let colorClass = "text-muted-foreground"; 
     if (severity === 'high') colorClass = "text-destructive";
     else if (severity === 'medium') colorClass = "text-orange-500";
 
@@ -89,8 +82,8 @@ export default function AlertsPage() {
       case 'cleaning_pending': return <Sparkles className={`h-5 w-5 ${colorClass}`} />;
       case 'expiring_soon': return <ShieldAlert className={`h-5 w-5 ${colorClass}`} />;
       case 'expired_material': return <AlertTriangle className={`h-5 w-5 ${colorClass}`} />;
-      case 'ampulario_expiring_soon': return <PackageWarning className={`h-5 w-5 ${colorClass}`} />;
-      case 'ampulario_expired_material': return <ArchiveBox className={`h-5 w-5 ${colorClass}`} />;
+      case 'ampulario_expiring_soon': return <PackageWarning className={`h-5 w-5 ${colorClass}`} />; // type name in DB remains
+      case 'ampulario_expired_material': return <ArchiveBox className={`h-5 w-5 ${colorClass}`} />; // type name in DB remains
       default: return <Info className={`h-5 w-5 ${colorClass}`} />;
     }
   };
@@ -104,7 +97,7 @@ export default function AlertsPage() {
     }
   }
 
-  const isLoading = isLoadingAmpularioAlerts || isLoadingSpaces || authLoading;
+  const isLoading = isLoadingApiAlerts || isLoadingSpaces || authLoading;
 
   return (
     <div>
@@ -136,7 +129,7 @@ export default function AlertsPage() {
                   <TableRow>
                     <TableHead className="w-[50px]">Tipo</TableHead>
                     <TableHead>Mensaje</TableHead>
-                    <TableHead>Contexto</TableHead> {/* Ambulance or Space Name */}
+                    <TableHead>Contexto</TableHead> 
                     <TableHead>Gravedad</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Acción</TableHead>
@@ -144,8 +137,6 @@ export default function AlertsPage() {
                 </TableHeader>
                 <TableBody>
                   {allAlerts.map((alert) => {
-                    // Use getAnyAmbulanceById because contextAlerts are already filtered,
-                    // but we need the name if it exists for display.
                     const ambulance: Ambulance | undefined = alert.ambulanceId ? getAnyAmbulanceById(alert.ambulanceId) : undefined;
                     const space = alert.spaceId ? spaces.find(s => s.id === alert.spaceId) : null;
                     const contextName = ambulance 
@@ -174,9 +165,10 @@ export default function AlertsPage() {
                               <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>Ver Ambulancia</Link>
                             </Button>
                           )}
-                           {alert.type.startsWith('ampulario_') && alert.spaceId && (
+                           {alert.type.startsWith('ampulario_') && alert.spaceId && ( // type name in DB remains
                              <Button variant="outline" size="sm" asChild>
-                              <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Ampulario</Link>
+                              {/* The target URL /dashboard/ampulario remains the same */}
+                              <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Materiales</Link>
                             </Button>
                            )}
                         </TableCell>

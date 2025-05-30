@@ -1,3 +1,4 @@
+
 // /api/ampulario/alerts
 import { NextResponse, type NextRequest } from 'next/server';
 import { getAmpularioMaterials, getSpaceById } from '@/lib/ampularioStore';
@@ -24,8 +25,8 @@ export async function GET(request: NextRequest) {
         if (daysUntilExpiry < 0) {
           alerts.push({
             id: `alert-amp-exp-${material.id}`,
-            type: 'ampulario_expired_material',
-            message: `Ampulario: ${material.name} en ${spaceName} caducó el ${format(expiryDate, 'PPP', { locale: es })}.`,
+            type: 'ampulario_expired_material', // Internal type name remains
+            message: `Material Central: ${material.name} en ${spaceName} caducó el ${format(expiryDate, 'PPP', { locale: es })}.`,
             materialId: material.id,
             spaceId: material.space_id,
             severity: 'high',
@@ -34,8 +35,8 @@ export async function GET(request: NextRequest) {
         } else if (daysUntilExpiry <= 3) {
           alerts.push({
             id: `alert-amp-expsoon-${material.id}`,
-            type: 'ampulario_expiring_soon',
-            message: `Ampulario: ${material.name} en ${spaceName} caduca en ${daysUntilExpiry} día(s) el ${format(expiryDate, 'PPP', { locale: es })}.`,
+            type: 'ampulario_expiring_soon', // Internal type name remains
+            message: `Material Central: ${material.name} en ${spaceName} caduca en ${daysUntilExpiry} día(s) el ${format(expiryDate, 'PPP', { locale: es })}.`,
             materialId: material.id,
             spaceId: material.space_id,
             severity: 'medium',
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(alerts);
   } catch (error) {
     console.error('API Error GET /api/ampulario/alerts:', error);
-    return NextResponse.json({ error: 'Error al obtener alertas del ampulario' }, { status: 500 });
+    // Adjusted error message slightly
+    return NextResponse.json({ error: 'Error al obtener alertas del inventario central' }, { status: 500 });
   }
 }

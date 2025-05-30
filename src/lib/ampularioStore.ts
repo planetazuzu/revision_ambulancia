@@ -1,11 +1,12 @@
+
 // Server-side in-memory store for Ampulario data
 import type { Space, AmpularioMaterial, MaterialRoute } from '@/types';
 import { formatISO, addDays, subDays } from 'date-fns';
 
 // --- Spaces ---
 let spaces: Space[] = [
-  { id: 'space23', name: 'Ampulario Principal' },
-  { id: 'space01', name: 'Stock Local Ambulancia 01' }, // Example of another space
+  { id: 'space23', name: 'Almacén Principal' }, // Renamed from 'Ampulario Principal'
+  { id: 'space01', name: 'Stock Local Ambulancia 01' }, 
 ];
 
 export const getSpaces = (): Space[] => spaces;
@@ -32,19 +33,17 @@ export const updateSpace = (id: string, updates: Partial<Omit<Space, 'id'>>): Sp
 
 export const deleteSpace = (id: string): boolean => {
   const initialLength = spaces.length;
-  // Prevent deleting a space if it's currently associated with materials
   const isSpaceInUse = ampularioMaterials.some(material => material.space_id === id);
   if (isSpaceInUse) {
-    // Optionally, throw an error or return a specific indicator
     console.warn(`Attempted to delete space ${id} which is still in use by materials.`);
-    return false; // Or throw new Error('Space is in use and cannot be deleted');
+    return false; 
   }
   spaces = spaces.filter(s => s.id !== id);
   return spaces.length < initialLength;
 };
 
 
-// --- Ampulario Materials ---
+// --- Ampulario Materials (now "Central Materials") ---
 let ampularioMaterials: AmpularioMaterial[] = [
   { id: 'ampmat001', space_id: 'space23', name: 'Adrenalina 1mg/1ml', dose: '1', unit: 'mg/ml', quantity: 10, route: 'IV/IM', expiry_date: formatISO(addDays(new Date(), 90)), created_at: formatISO(new Date()), updated_at: formatISO(new Date()) },
   { id: 'ampmat002', space_id: 'space23', name: 'Salbutamol Nebulizador', dose: '5', unit: 'mg/ml', quantity: 5, route: 'Nebulizador', expiry_date: formatISO(addDays(new Date(), 2)), created_at: formatISO(new Date()), updated_at: formatISO(new Date()) },
@@ -63,7 +62,7 @@ export const getAmpularioMaterials = (filters: { spaceId?: string; routeName?: M
   if (filters.nameQuery) {
     filtered = filtered.filter(m => m.name.toLowerCase().includes(filters.nameQuery!.toLowerCase()));
   }
-  return filtered.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); // Sort by most recent first
+  return filtered.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); 
 };
 
 export const getAmpularioMaterialById = (id: string): AmpularioMaterial | undefined => ampularioMaterials.find(m => m.id === id);
@@ -93,7 +92,6 @@ export const updateAmpularioMaterial = (id: string, updates: Partial<Pick<Ampula
   const materialIndex = ampularioMaterials.findIndex(m => m.id === id);
   if (materialIndex === -1) return undefined;
 
-  // Ensure space_id exists if it's being updated
   if (updates.space_id && !getSpaceById(updates.space_id)) {
     throw new Error(`El espacio con ID '${updates.space_id}' no existe.`);
   }

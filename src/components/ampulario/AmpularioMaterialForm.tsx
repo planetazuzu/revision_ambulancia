@@ -76,9 +76,9 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
             dose: '',
             unit: '',
             quantity: 0,
-            route: 'Oral', // Default or consider the first available route if applicable
+            route: 'Oral', 
             expiry_date: null,
-            space_id: spaces.find(s => s.id === 'space23')?.id || spaces[0]?.id || '', // Ensure a valid default space_id
+            space_id: spaces.find(s => s.id === 'space23')?.id || spaces[0]?.id || '', 
         });
       }
     }
@@ -109,7 +109,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
         title: material ? "Material Actualizado" : "Material Añadido",
         description: `${data.name} ha sido procesado correctamente.`,
       });
-      onSave(); // This should re-fetch materials and close the dialog
+      onSave(); 
     } catch (error: any) {
       toast({
         title: "Error",
@@ -131,7 +131,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
         <DialogHeader>
           <DialogTitle>{material ? 'Editar Material' : 'Añadir Nuevo Material'}</DialogTitle>
           <DialogDescription>
-            Completa los detalles del material del Ampulario.
+            Completa los detalles del material para el inventario central.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -270,6 +270,3 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
     </Dialog>
   );
 }
-
-
-    

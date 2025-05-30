@@ -33,8 +33,8 @@ import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
 
 const DEFAULT_SPACE_ID = 'space23'; 
 
-export default function AmpularioPage() {
-  const { user } = useAuth(); // Obtener el usuario del contexto de autenticación
+export default function GestionMaterialesPage() { // Renombrado de AmpularioPage
+  const { user } = useAuth(); 
   const [materials, setMaterials] = useState<AmpularioMaterial[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string>(DEFAULT_SPACE_ID);
@@ -50,7 +50,7 @@ export default function AmpularioPage() {
   const [isSpaceFormOpen, setIsSpaceFormOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 
-  const isCoordinator = user?.role === 'coordinador'; // Variable para verificar el rol
+  const isCoordinator = user?.role === 'coordinador'; 
 
   const fetchSpaces = useCallback(async (resetSelectedSpace = false) => {
     setIsLoadingSpaces(true);
@@ -127,7 +127,7 @@ export default function AmpularioPage() {
     formData.append('file', file);
 
     try {
-      const response = await fetch('/api/ampulario/import', {
+      const response = await fetch('/api/ampulario/import', { // API path remains for now
         method: 'POST',
         body: formData,
       });
@@ -216,8 +216,8 @@ export default function AmpularioPage() {
   return (
     <div>
       <PageHeader
-        title="Gestión de Ampulario"
-        description="Gestionar materiales y espacios de almacenamiento del ampulario."
+        title="Gestión de Materiales Central"
+        description="Gestionar materiales y espacios de almacenamiento del inventario central."
       />
       <Tabs defaultValue="materials" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -234,7 +234,7 @@ export default function AmpularioPage() {
                         <CardTitle>Filtros de Materiales</CardTitle>
                         <CardDescription>Refinar la lista de materiales para {isLoadingSpaces ? "..." : (spaces.find(s => s.id === selectedSpaceId)?.name || 'ningún espacio seleccionado')}.</CardDescription>
                     </div>
-                    {isCoordinator && ( // Solo mostrar botones si es coordinador
+                    {isCoordinator && ( 
                       <div className="flex gap-2">
                           <Button onClick={handleAddNewMaterial}>
                               <PlusCircle className="mr-2 h-4 w-4" /> Añadir Material
@@ -399,9 +399,9 @@ export default function AmpularioPage() {
                     <div className="flex justify-between items-center">
                         <div>
                             <CardTitle>Espacios de Almacenamiento</CardTitle>
-                            <CardDescription>Gestionar los diferentes lugares donde se almacenan los materiales del ampulario.</CardDescription>
+                            <CardDescription>Gestionar los diferentes lugares donde se almacenan los materiales del inventario central.</CardDescription>
                         </div>
-                        {isCoordinator && ( // Solo mostrar botón si es coordinador
+                        {isCoordinator && ( 
                           <Button onClick={handleAddNewSpace}>
                               <ArchiveRestore className="mr-2 h-4 w-4" /> Añadir Nuevo Espacio
                           </Button>
@@ -501,5 +501,3 @@ export default function AmpularioPage() {
     </div>
   );
 }
-
-    
