@@ -7,48 +7,240 @@ import React, { createContext, useContext, useState, type ReactNode, useEffect, 
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale'; 
 import { useAuth } from './AuthContext';
-import type { Package, Shield,Syringe, Stethoscope,Thermometer, Bandage, Pill, HeartPulse, Box, BriefcaseMedical, Truck, AmbulanceIcon as AmbulanceLucideIcon } from 'lucide-react'; // Example icons
+
+// --- USVB Kit Data Transformation ---
+
+const rawUSVBKitData: { [key: number]: string[] } = {
+  1: ["Mochila pediátrica"], // Placeholder name, actual content determined by other kits.
+  2: ["Mochila adulto"], // Placeholder name, actual content determined by other kits.
+  3: [
+    "Kit de partos (1)", // Assuming (1) if not specified for complex items
+    "Kit de quemados (1)",
+    "Aspirador secreciones manual (1)",
+    "Nebulizador (1)",
+    "Botella urinaria (1)"
+  ],
+  4: [
+    "Mascarillas FFP3 (4)",
+    "Mascarillas quirúrgicas (1 caja)", // Will parse as 1, user can adjust text later
+    "Gafas protectoras (4)",
+    "Gorros protección (4)",
+    "Batas protecciones desechables (10)",
+    "Mascarillas FFP2 (1 caja)" // Will parse as 1
+  ],
+  5: [
+    "Glucagón (1)",
+    "Insulina rápida (1)",
+    "Diacepan rectal 5 mg (1)",
+    "Diacepan rectal 10 mg (1)",
+    "Suero fisiológico 500 ml (1)"
+  ],
+  6: [
+    "Manitol (1)",
+    "Ringer lactato (1)",
+    "Suero fisiológico 500 ml (1)"
+  ],
+  7: [
+    "Sonda de aspiración nº 6–16 (2)",
+    "Sonda Yankauer (2)"
+  ],
+  8: [
+    "Mascarilla I-gel nº 1–2,5 (1)",
+    "Mascarilla I-gel nº 3–5 (1)"
+  ],
+  9: [
+    "Cánula Güelde nº 000–5 (2)",
+    "Filtro bacteriano (2)",
+    "Bolsa aspiradora (2)"
+  ],
+  10: [
+    "Empapadores (5)",
+    "Bateas (5)",
+    "Esponjas jabonosas (2)"
+  ],
+  11: [
+    "Fonendoscopio (1)",
+    "Esfigmomanómetro manual adulto-pediátrico (1)",
+    "Esfigmomanómetro automático (1)",
+    "Parche DESA adulto-pediátrico (1)",
+    "Termómetro (1)",
+    "Glucómetro (1)",
+    "Pulsioxímetro adulto (1)",
+    "Pulsioxímetro pediátrico (1)",
+    "Lancetas (10)",
+    "Pupilera (1)",
+    "Tiras reactivas (1 caja)", // parse as 1
+    "Torniquete (1)",
+    "Tijera cortarropa (1)", // Assume 1
+    "Rasuradoras (3)"
+  ],
+  12: [
+    "Sutura 2/0-3/0 (2)",
+    "Bisturí con mango (4)",
+    "Merocel (2)",
+    "Tijeras (1)",
+    "Pinzas sin dientes (1)",
+    "Pinzas con dientes (1)",
+    "Kochers (2)",
+    "Porta-agujas (1)",
+    "Pinza Magill (1)",
+    "Guantes estériles 6,5-8 (2)",
+    "Paños estériles (2)",
+    "Jeringa cono ancho 50 ml (2)",
+    "Jeringa cono Luer (2)",
+    "Lubricante urológico (2)",
+    "Vaselina (1)",
+    "Cable LAERDAL 220 V (1)",
+    "Válvula de Heimlich (1)",
+    "Pleurocath 6 F (1)", // Assume 1
+    "Pleurocath 8 F (1)"  // Assume 1
+  ],
+  13: [
+    "Alargaderas (4)",
+    "Mascarilla traqueotomizados (1)",
+    "Mascarilla Ventimask adulto (4)",
+    "Gafas nasales adulto (6)",
+    "Mascarilla reservorio adulto (3)",
+    "Mascarilla nebulización adulto (3)"
+  ],
+  14: [
+    "Compresas (12)",
+    "Gasas (12)"
+  ],
+  15: [
+    "Ambu adulto (1)",
+    "Tubo corrugado (2)"
+  ],
+  16: [
+    "Mascarilla Ventimask pediátrica (2)",
+    "Gafas nasales pediátrica (2)",
+    "Mascarilla reservorio pediátrica (2)",
+    "Mascarilla nebulización pediátrica (2)",
+    "Ambu pediátrico (1)",
+    "Ambu neonato (1)",
+    "Mascarilla Ambu nº 0-5 (1)"
+  ],
+  17: [
+    "Correa inmovilización araña (1)",
+    "Kidi-safe (1)",
+    "Manta (1)", // Assume 1
+    "Sábanas (2)" // Assume 2 for sheets
+  ],
+  18: [
+    "Cinturón pélvico (1)",
+    "Salvafast (1)",
+    "Lona de rescate (1)"
+  ],
+  19: [
+    "Inmovilizador cabeza (1)",
+    "Juego collarines (2)", // Refers to a set
+    "Correas camilla-tijera (1 juego)" // Refers to a set
+  ],
+  20: [
+    "Colchón vacío (1)",
+    "Férulas neopreno (1)" // Refers to a set
+  ],
+  21: [
+    "Venda elástica cohesiva (2)",
+    "Venda crepé (2)",
+    "Esparadrapo plástico 2,5 cm (2)",
+    "Esparadrapo tela (2)",
+    "Agua oxigenada (2)",
+    "Alcohol (1)",
+    "Clorhexidina alcohólica (3)",
+    "Vasos de agua (3)",
+    "Botellín agua (1)",
+    "Caja dentadura (2)",
+    "Mantas térmicas (4)"
+  ],
+  22: ["Guantes de nitrilo S, M, L (1 caja)"], // Assume 1 box for all sizes
+  23: ["Ampulario (1)"], // Placeholder for medication ampoules kit
+  24: [
+    "Pilas AAA (8)",
+    "Pilas AA (4)",
+    "Pilas CR2022 (2)",
+    "Llaves ampulario/bolardos, etc. (1 juego)"
+  ]
+  // Kit 25 is incomplete in user's prompt, so it's omitted for now.
+};
+
+const kitDetailsMap: { [key: number]: { name: string; iconName: string; genericImageHint: string } } = {
+  1: { name: "Mochila Pediátrica", iconName: "ToyBrick", genericImageHint: "pediatric supplies" },
+  2: { name: "Mochila Adulto", iconName: "BriefcaseMedical", genericImageHint: "adult supplies" },
+  3: { name: "Material Diverso (Partos, Quemados, etc.)", iconName: "Package", genericImageHint: "assorted medical supplies" },
+  4: { name: "Kit EPI y Bioseguridad", iconName: "ShieldAlert", genericImageHint: "ppe kit" },
+  5: { name: "Kit Medicación Urgente", iconName: "Pill", genericImageHint: "urgent medication" },
+  6: { name: "Kit Fluidoterapia", iconName: "Droplet", genericImageHint: "iv fluids" },
+  7: { name: "Kit Aspiración Secreciones", iconName: "Filter", genericImageHint: "suction supplies" }, // Used Filter as placeholder
+  8: { name: "Kit Vía Aérea (I-gel)", iconName: "Wind", genericImageHint: "airway management" },
+  9: { name: "Kit Vía Aérea (Cánulas/Filtros)", iconName: "Wind", genericImageHint: "airway accessories" },
+  10: { name: "Kit Higiene y Cuidados", iconName: "Sparkles", genericImageHint: "hygiene patient care" },
+  11: { name: "Kit Diagnóstico", iconName: "Stethoscope", genericImageHint: "diagnostic tools" },
+  12: { name: "Kit Curas y Pequeña Cirugía", iconName: "Scissors", genericImageHint: "suture surgical tools" },
+  13: { name: "Kit Oxigenoterapia Adulto", iconName: "Lung", genericImageHint: "oxygen masks adult" },
+  14: { name: "Kit Apósitos y Gasas", iconName: "Bandage", genericImageHint: "dressings gauze" },
+  15: { name: "Kit Reanimación Adulto (Ambu)", iconName: "HeartPulse", genericImageHint: "ambu bag adult" },
+  16: { name: "Kit Oxigenoterapia/Reanimación Pediátrica", iconName: "Baby", genericImageHint: "pediatric oxygen ambu" },
+  17: { name: "Kit Inmovilización y Transporte", iconName: "Accessibility", genericImageHint: "immobilization transport" },
+  18: { name: "Kit Rescate y Seguridad", iconName: "Anchor", genericImageHint: "rescue safety" },
+  19: { name: "Kit Inmovilización Cervical", iconName: "UserCog", genericImageHint: "cervical collars head immobilizer" }, // UserCog as placeholder
+  20: { name: "Kit Inmovilización Colchón/Férulas", iconName: "BedSingle", genericImageHint: "vacuum mattress splints" },
+  21: { name: "Kit Consumibles Varios", iconName: "Archive", genericImageHint: "general consumables" },
+  22: { name: "Guantes Nitrilo (S,M,L)", iconName: "Hand", genericImageHint: "nitrile gloves" },
+  23: { name: "Ampulario Medicación", iconName: "Syringe", genericImageHint: "medication ampoules" },
+  24: { name: "Kit Baterías y Llaves", iconName: "KeyRound", genericImageHint: "batteries keys" },
+};
 
 
-// --- Mock Data for USVB Kits ---
-const initialUSVBKits: USVBKit[] = [
-  {
-    id: 'usvb-kit-01', number: 1, name: 'Kit Vía Aérea Avanzada', iconName: 'Wind', genericImageHint: 'airway kit', materials: [
-      { id: 'mat-va-01', name: 'Laringoscopio (juego)', quantity: 1, targetQuantity: 1 },
-      { id: 'mat-va-02', name: 'Tubos Endotraqueales (varios)', quantity: 5, targetQuantity: 5 },
-      { id: 'mat-va-03', name: 'Mascarillas Laríngeas', quantity: 2, targetQuantity: 2 },
-    ]
-  },
-  {
-    id: 'usvb-kit-02', number: 2, name: 'Kit Circulatorio y Fluidos', iconName: 'Droplet', genericImageHint: 'iv supplies', materials: [
-      { id: 'mat-cf-01', name: 'Catéteres IV (varios)', quantity: 10, targetQuantity: 10 },
-      { id: 'mat-cf-02', name: 'Suero Salino 500ml', quantity: 3, targetQuantity: 4 },
-      { id: 'mat-cf-03', name: 'Sistemas de Infusión', quantity: 4, targetQuantity: 4 },
-    ]
-  },
-  {
-    id: 'usvb-kit-03', number: 3, name: 'Kit Medicación Urgente', iconName: 'Pill', genericImageHint: 'medication box', materials: [
-      { id: 'mat-mu-01', name: 'Adrenalina 1mg', quantity: 5, targetQuantity: 5 },
-      { id: 'mat-mu-02', name: 'Atropina 1mg', quantity: 2, targetQuantity: 2 },
-      { id: 'mat-mu-03', name: 'Diazepam 10mg', quantity: 1, targetQuantity: 2 },
-    ]
-  },
-  {
-    id: 'usvb-kit-04', number: 4, name: 'Kit EPI y Bioseguridad', iconName: 'ShieldAlert', genericImageHint: 'ppe kit', materials: [
-      { id: 'mat-epi-01', name: 'Mascarillas FFP3', quantity: 8, targetQuantity: 10 },
-      { id: 'mat-epi-02', name: 'Guantes Estériles (pares)', quantity: 15, targetQuantity: 20 },
-      { id: 'mat-epi-03', name: 'Batas Desechables', quantity: 3, targetQuantity: 5 },
-    ]
-  },
-   { id: 'usvb-kit-05', number: 5, name: 'Kit Trauma Básico', iconName: 'Bandage', genericImageHint: 'trauma bag', materials: [] },
-   { id: 'usvb-kit-06', number: 6, name: 'Kit Diagnóstico', iconName: 'Stethoscope', genericImageHint: 'diagnostic tools', materials: [] },
-   { id: 'usvb-kit-07', number: 7, name: 'Mochila Oxigenoterapia', iconName: 'Lung', genericImageHint: 'oxygen tank', materials: [] },
-   { id: 'usvb-kit-08', number: 8, name: 'Material Inmovilización', iconName: 'Accessibility', genericImageHint: 'splints collars', materials: [] },
-   { id: 'usvb-kit-09', number: 9, name: 'Aspirador Secreciones', iconName: ' 吸尘器', genericImageHint: 'suction unit', materials: [] }, // Placeholder icon for aspirator
-   { id: 'usvb-kit-10', number: 10, name: 'Kit Partos', iconName: 'Baby', genericImageHint: 'delivery kit', materials: [] },
-   { id: 'usvb-kit-11', number: 11, name: 'Nevera Medicación', iconName: 'Refrigerator', genericImageHint: 'medical fridge', materials: [] },
-   { id: 'usvb-kit-12', number: 12, name: 'Material Pediátrico', iconName: 'ToyBrick', genericImageHint: 'pediatric supplies', materials: [] },
-];
+const parseMaterialString = (materialStr: string): { name: string; quantity: number } => {
+  const match = materialStr.match(/(.+?)\s*\((\d+)\s*(\w*)\)$/); // Matches "Name (Quantity Unit)" or "Name (Quantity)"
+  const matchOnlyQty = materialStr.match(/(.+?)\s*\((\d+)\)$/); // Fallback for "Name (Quantity)"
+  const matchBox = materialStr.match(/(.+?)\s*\((\d*\s*caja)\)$/i); // Matches "Name (1 caja)" or "Name (caja)"
+  
+  if (matchBox) {
+    return { name: matchBox[1].trim(), quantity: 1 }; // Assume "1 caja" means 1 unit of box
+  }
+  if (match) {
+    let name = match[1].trim();
+    const quantity = parseInt(match[2], 10);
+    // if (match[3]) name += ` ${match[3]}`; // Append unit to name if present, e.g. "Suero fisiológico 500 ml"
+    return { name, quantity };
+  }
+  if (matchOnlyQty) {
+    return { name: matchOnlyQty[1].trim(), quantity: parseInt(matchOnlyQty[2], 10) };
+  }
+  // If no quantity is specified, or "juego" or "kit", assume 1.
+  if (materialStr.toLowerCase().includes("juego") || materialStr.toLowerCase().includes("kit de")) {
+    return { name: materialStr.trim(), quantity: 1 };
+  }
+  return { name: materialStr.trim(), quantity: 1 };
+};
+
+const processedUSVBKits: USVBKit[] = Object.entries(rawUSVBKitData)
+  .map(([kitNumStr, materialStrings]) => {
+    const kitNumber = parseInt(kitNumStr, 10);
+    const details = kitDetailsMap[kitNumber] || { name: `Kit Desconocido ${kitNumber}`, iconName: 'Package', genericImageHint: 'medical supplies' };
+    
+    const materials: USVBKitMaterial[] = materialStrings.map((matStr, index) => {
+      const parsed = parseMaterialString(matStr);
+      return {
+        id: `usvb-kit${kitNumber}-mat-${index}-${parsed.name.replace(/\s+/g, '-').toLowerCase()}`,
+        name: parsed.name,
+        quantity: parsed.quantity,
+        targetQuantity: parsed.quantity, // Target is same as initial quantity for these examples
+      };
+    });
+
+    return {
+      id: `usvb-kit-${kitNumber.toString().padStart(2, '0')}`,
+      number: kitNumber,
+      name: details.name,
+      iconName: details.iconName,
+      genericImageHint: details.genericImageHint,
+      materials: materials,
+    };
+  })
+  .sort((a, b) => a.number - b.number);
 
 
 interface AppDataContextType {
@@ -152,7 +344,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [nonConsumableMaterials, setNonConsumableMaterials] = useState<NonConsumableMaterial[]>(initialNonConsumables);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [revisionesDiariasVehiculo, setRevisionesDiariasVehiculo] = useState<RevisionDiariaVehiculo[]>([]);
-  const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>(initialUSVBKits);
+  const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>(processedUSVBKits); // Use processed data
 
 
   const accessibleAmbulances = useMemo(() => {
