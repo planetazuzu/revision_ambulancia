@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definición de fuentes y colores base para el tema Gobierno de La Rioja */
+@layer base {
+  :root {
+    /* Colores Corporativos Gobierno de La Rioja */
+    /* Pantone 368 C (Verde): ~ #6FAA2D o #73C23A. Usaremos HSL para flexibilidad. */
+    /* HSL para #73C23A es aprox. 94, 58%, 50% */
+    /* HSL para #6FAA2D es aprox. 90, 59%, 42% */
+    --rioja-primary-hue: 92; /* Tono verde ajustado */
+    --rioja-primary-saturation: 60%;
+    --rioja-primary-lightness: 45%;
+
+    /* Pantone 7546 C (Gris): ~ #5D666F o #535C67. Es un gris azulado oscuro. */
+    /* HSL para #5D666F es aprox. 210, 10%, 40% */
+    --rioja-gray-hue: 210;
+    --rioja-gray-saturation: 10%;
+    --rioja-gray-lightness: 40%;
+    --rioja-gray-lightness-light: 96%; /* Gris muy claro para fondos de tarjeta */
+
+
+    /* Tema Claro */
+    --background-rioja: 210 20% 98%; /* Blanco Hueso / Gris muy claro */
+    --foreground-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 20%; /* Gris oscuro para texto */
+
+    --card-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) var(--rioja-gray-lightness-light); /* Fondo de tarjeta gris claro */
+    --card-foreground-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 20%;
+
+    --popover-rioja: 0 0% 100%;
+    --popover-foreground-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 20%;
+
+    --primary-rioja: var(--rioja-primary-hue) var(--rioja-primary-saturation) var(--rioja-primary-lightness); /* Verde Corporativo */
+    --primary-foreground-rioja: 0 0% 100%; /* Blanco */
+
+    --secondary-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 55%; /* Gris medio como secundario */
+    --secondary-foreground-rioja: 0 0% 100%;
+
+    --muted-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) var(--rioja-gray-lightness-light);
+    --muted-foreground-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 45%;
+
+    --accent-rioja: var(--rioja-primary-hue) var(--rioja-primary-saturation) 55%; /* Un verde ligeramente más claro para acentos */
+    --accent-foreground-rioja: 0 0% 100%;
+
+    --destructive-rioja: 0 70% 50%; /* Rojo para destructivo */
+    --destructive-foreground-rioja: 0 0% 100%;
+
+    --border-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 85%;
+    --input-rioja: 0 0% 100%;
+    --ring-rioja: var(--rioja-primary-hue) var(--rioja-primary-saturation) var(--rioja-primary-lightness);
+
+    --radius-rioja: 0.25rem; /* 4px */
+
+    --chart-1-rioja: var(--rioja-primary-hue) var(--rioja-primary-saturation) var(--rioja-primary-lightness);
+    --chart-2-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 50%;
+    --chart-3-rioja: var(--rioja-primary-hue) 40% 60%;
+  }
+
+  .dark-rioja {
+    --background-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 15%; /* Fondo oscuro */
+    --foreground-rioja: var(--rioja-gray-hue) 5% 85%; /* Texto claro */
+
+    --card-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 20%; /* Tarjetas un poco más claras que el fondo */
+    --card-foreground-rioja: var(--rioja-gray-hue) 5% 85%;
+
+    --popover-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 10%;
+    --popover-foreground-rioja: var(--rioja-gray-hue) 5% 85%;
+
+    --primary-rioja: var(--rioja-primary-hue) var(--rioja-primary-saturation) 50%; /* Verde un poco más brillante en oscuro */
+    --primary-foreground-rioja: 0 0% 100%;
+
+    --secondary-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 30%;
+    --secondary-foreground-rioja: var(--rioja-gray-hue) 5% 85%;
+
+    --muted-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 25%;
+    --muted-foreground-rioja: var(--rioja-gray-hue) 5% 65%;
+
+    --accent-rioja: var(--rioja-primary-hue) var(--rioja-primary-saturation) 60%;
+    --accent-foreground-rioja: 0 0% 100%;
+
+    --destructive-rioja: 0 60% 55%;
+    --destructive-foreground-rioja: 0 0% 100%;
+
+    --border-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 25%;
+    --input-rioja: var(--rioja-gray-hue) var(--rioja-gray-saturation) 22%;
+    --ring-rioja: var(--rioja-primary-hue) var(--rioja-primary-saturation) 50%;
+  }
+}
+
+/* Aplicar fuentes si estuvieran disponibles globalmente */
+/*
+body {
+  font-family: "Riojana Regular", sans-serif;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Riojana Condensed", sans-serif;
+}
+*/
+
+/* Asegurar que los estilos base de shadcn no interfieran o se adapten */
+@layer base {
+  * {
+    border-color: hsl(var(--border-rioja));
+  }
+  body.theme-rioja {
+    background-color: hsl(var(--background-rioja));
+    color: hsl(var(--foreground-rioja));
+    /* Aquí podrías intentar aplicar la fuente "Riojana" si estuviera cargada */
+    /* font-family: "Riojana Regular", system-ui, sans-serif; */
+  }
+}
+
+/* Estilos específicos para componentes ShadCN bajo el tema Rioja */
+.theme-rioja .card-rioja-custom {
+  background-color: hsl(var(--card-rioja));
+  color: hsl(var(--card-foreground-rioja));
+  border-radius: var(--radius-rioja);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04); /* Sombra suave */
+  border: 1px solid hsl(var(--border-rioja));
+}
+
+.theme-rioja .button-primary-rioja {
+  background-color: hsl(var(--primary-rioja));
+  color: hsl(var(--primary-foreground-rioja));
+}
+.theme-rioja .button-primary-rioja:hover {
+  background-color: hsl(var(--primary-rioja) / 0.9);
+}
+
+.theme-rioja .button-secondary-rioja {
+  background-color: hsl(var(--secondary-rioja));
+  color: hsl(var(--secondary-foreground-rioja));
+}
+.theme-rioja .button-secondary-rioja:hover {
+  background-color: hsl(var(--secondary-rioja) / 0.9);
+}
+
+.theme-rioja .input-rioja-custom {
+  background-color: hsl(var(--input-rioja));
+  border-color: hsl(var(--border-rioja));
+  color: hsl(var(--foreground-rioja));
+}
+.theme-rioja .input-rioja-custom:focus {
+  border-color: hsl(var(--ring-rioja));
+  box-shadow: 0 0 0 1px hsl(var(--ring-rioja));
+}
+
+.theme-rioja .table-rioja-custom th {
+  color: hsl(var(--rioja-primary-hue) var(--rioja-primary-saturation) var(--rioja-primary-lightness)); /* Cabeceras de tabla en verde */
+}
+
+/* Estilos para scrollbars si se personalizan */
+.theme-rioja ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.theme-rioja ::-webkit-scrollbar-track {
+  background: hsl(var(--background-rioja));
+}
+.theme-rioja ::-webkit-scrollbar-thumb {
+  background: hsl(var(--secondary-rioja));
+  border-radius: 4px;
+}
+.theme-rioja ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary-rioja));
+}
+
+/* Para modo oscuro, si se implementa con una clase .dark-rioja en body */
+.dark-rioja.theme-rioja .card-rioja-custom {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+.dark-rioja.theme-rioja ::-webkit-scrollbar-thumb {
+  background: hsl(var(--secondary-rioja));
+}
+.dark-rioja.theme-rioja ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary-rioja));
+}
+
