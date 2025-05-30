@@ -1,5 +1,4 @@
 
-
 export interface User {
   id: string;
   name: string;
@@ -57,7 +56,7 @@ export interface ConsumableMaterial {
   quantity: number;
   expiryDate: string; // ISO Date string
   ambulanceId: string;
-  storageLocation?: string; // Nueva propiedad para la ubicación
+  storageLocation?: string;
 }
 
 export type NonConsumableMaterialStatus = 'Operacional' | 'Necesita Reparación' | 'Fuera de Servicio';
@@ -68,7 +67,7 @@ export interface NonConsumableMaterial {
   serialNumber: string;
   status: NonConsumableMaterialStatus;
   ambulanceId: string;
-  storageLocation?: string; // Nueva propiedad para la ubicación
+  storageLocation?: string;
 }
 
 export type MaterialRoute = "IV/IM" | "Nebulizador" | "Oral";
@@ -131,7 +130,7 @@ export interface RevisionDiariaVehiculo {
   driverFirstName: string;
   driverLastName: string;
   checkDate: string; // ISO Date string
-  ambulanceNumber: string; // Redundant if we have ambulanceId, but requested
+  ambulanceNumber: string;
   paxBagNumber: string;
   paxFolderPresent: YesNoStatus;
   
@@ -152,7 +151,6 @@ export interface RevisionDiariaVehiculo {
   submittedByUserId: string;
 }
 
-// Lista de ubicaciones de almacenamiento comunes dentro de una ambulancia
 export const ambulanceStorageLocations = [
     "Mochila Principal (Rojo)",
     "Mochila Vía Aérea (Azul)",
@@ -165,6 +163,28 @@ export const ambulanceStorageLocations = [
     "Compartimento Techo Cabina",
     "Debajo Asiento Acompañante",
     "Sin Ubicación Específica"
-] as const; // Usar 'as const' para que los strings sean tipos literales
+] as const;
 
 export type AmbulanceStorageLocation = typeof ambulanceStorageLocations[number];
+
+
+// --- Tipos para el Módulo de Gestión de Material USVB ---
+export type USVBKitMaterialStatus = 'ok' | 'low' | 'out';
+
+export interface USVBKitMaterial {
+  id: string;
+  name: string;
+  quantity: number;
+  targetQuantity: number;
+  status?: USVBKitMaterialStatus; // Calculado: ok, bajo, agotado
+  // notes?: string; // Opcional para notas específicas del material en el kit
+}
+
+export interface USVBKit {
+  id: string; // ej. "usvb-kit-01"
+  number: number; // ej. 1 a 30
+  name: string; // ej. "Espacio 4: EPI"
+  iconName: string; // Nombre del icono de lucide-react, ej. "Shield"
+  genericImageHint?: string; // Para data-ai-hint, ej. "medical kit"
+  materials: USVBKitMaterial[];
+}

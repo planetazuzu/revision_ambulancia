@@ -1,12 +1,55 @@
 
 "use client";
 
-import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation } from '@/types';
+import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial } from '@/types';
 import { ambulanceStorageLocations } from '@/types'; // Importar la lista
-import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo, useCallback } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale'; 
 import { useAuth } from './AuthContext';
+import type { Package, Shield,Syringe, Stethoscope,Thermometer, Bandage, Pill, HeartPulse, Box, BriefcaseMedical, Truck, AmbulanceIcon as AmbulanceLucideIcon } from 'lucide-react'; // Example icons
+
+
+// --- Mock Data for USVB Kits ---
+const initialUSVBKits: USVBKit[] = [
+  {
+    id: 'usvb-kit-01', number: 1, name: 'Kit Vía Aérea Avanzada', iconName: 'Wind', genericImageHint: 'airway kit', materials: [
+      { id: 'mat-va-01', name: 'Laringoscopio (juego)', quantity: 1, targetQuantity: 1 },
+      { id: 'mat-va-02', name: 'Tubos Endotraqueales (varios)', quantity: 5, targetQuantity: 5 },
+      { id: 'mat-va-03', name: 'Mascarillas Laríngeas', quantity: 2, targetQuantity: 2 },
+    ]
+  },
+  {
+    id: 'usvb-kit-02', number: 2, name: 'Kit Circulatorio y Fluidos', iconName: 'Droplet', genericImageHint: 'iv supplies', materials: [
+      { id: 'mat-cf-01', name: 'Catéteres IV (varios)', quantity: 10, targetQuantity: 10 },
+      { id: 'mat-cf-02', name: 'Suero Salino 500ml', quantity: 3, targetQuantity: 4 },
+      { id: 'mat-cf-03', name: 'Sistemas de Infusión', quantity: 4, targetQuantity: 4 },
+    ]
+  },
+  {
+    id: 'usvb-kit-03', number: 3, name: 'Kit Medicación Urgente', iconName: 'Pill', genericImageHint: 'medication box', materials: [
+      { id: 'mat-mu-01', name: 'Adrenalina 1mg', quantity: 5, targetQuantity: 5 },
+      { id: 'mat-mu-02', name: 'Atropina 1mg', quantity: 2, targetQuantity: 2 },
+      { id: 'mat-mu-03', name: 'Diazepam 10mg', quantity: 1, targetQuantity: 2 },
+    ]
+  },
+  {
+    id: 'usvb-kit-04', number: 4, name: 'Kit EPI y Bioseguridad', iconName: 'ShieldAlert', genericImageHint: 'ppe kit', materials: [
+      { id: 'mat-epi-01', name: 'Mascarillas FFP3', quantity: 8, targetQuantity: 10 },
+      { id: 'mat-epi-02', name: 'Guantes Estériles (pares)', quantity: 15, targetQuantity: 20 },
+      { id: 'mat-epi-03', name: 'Batas Desechables', quantity: 3, targetQuantity: 5 },
+    ]
+  },
+   { id: 'usvb-kit-05', number: 5, name: 'Kit Trauma Básico', iconName: 'Bandage', genericImageHint: 'trauma bag', materials: [] },
+   { id: 'usvb-kit-06', number: 6, name: 'Kit Diagnóstico', iconName: 'Stethoscope', genericImageHint: 'diagnostic tools', materials: [] },
+   { id: 'usvb-kit-07', number: 7, name: 'Mochila Oxigenoterapia', iconName: 'Lung', genericImageHint: 'oxygen tank', materials: [] },
+   { id: 'usvb-kit-08', number: 8, name: 'Material Inmovilización', iconName: 'Accessibility', genericImageHint: 'splints collars', materials: [] },
+   { id: 'usvb-kit-09', number: 9, name: 'Aspirador Secreciones', iconName: ' 吸尘器', genericImageHint: 'suction unit', materials: [] }, // Placeholder icon for aspirator
+   { id: 'usvb-kit-10', number: 10, name: 'Kit Partos', iconName: 'Baby', genericImageHint: 'delivery kit', materials: [] },
+   { id: 'usvb-kit-11', number: 11, name: 'Nevera Medicación', iconName: 'Refrigerator', genericImageHint: 'medical fridge', materials: [] },
+   { id: 'usvb-kit-12', number: 12, name: 'Material Pediátrico', iconName: 'ToyBrick', genericImageHint: 'pediatric supplies', materials: [] },
+];
+
 
 interface AppDataContextType {
   ambulances: Ambulance[];
@@ -47,7 +90,12 @@ interface AppDataContextType {
   getRevisionDiariaVehiculoByAmbulanceId: (ambulanceId: string) => RevisionDiariaVehiculo | undefined;
   saveRevisionDiariaVehiculo: (check: Omit<RevisionDiariaVehiculo, 'id'>) => void;
   
-  getAmbulanceStorageLocations: () => readonly AmbulanceStorageLocation[]; // Nueva función
+  getAmbulanceStorageLocations: () => readonly AmbulanceStorageLocation[];
+
+  // USVB Kit Management
+  usvbKits: USVBKit[];
+  getUSVBKitById: (kitId: string) => USVBKit | undefined;
+  updateUSVBKitMaterialQuantity: (kitId: string, materialId: string, newQuantity: number) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -55,7 +103,7 @@ const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 const generateSVBAmbulances = (): Ambulance[] => {
   const svbAmbulances: Ambulance[] = [];
   for (let i = 1; i <= 21; i++) {
-    const numberString = i.toString().padStart(3, '0'); // Formato B001, B002, ... B021
+    const numberString = i.toString().padStart(3, '0');
     svbAmbulances.push({
       id: `svb-b${numberString}`,
       name: `SVB B${numberString}`,
@@ -65,7 +113,7 @@ const generateSVBAmbulances = (): Ambulance[] => {
       mechanicalReviewCompleted: false,
       cleaningCompleted: false,
       inventoryCompleted: false,
-      lastKnownKilometers: Math.floor(Math.random() * 500) + 100, // Kilometraje aleatorio entre 100 y 599
+      lastKnownKilometers: Math.floor(Math.random() * 500) + 100,
     });
   }
   return svbAmbulances;
@@ -75,22 +123,22 @@ export const initialAmbulances: Ambulance[] = [
   { id: 'amb001', name: 'Ambulancia 01', licensePlate: 'XYZ 123', model: 'Mercedes Sprinter', year: 2022, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastMechanicalReview: new Date(Date.now() - 5*24*60*60*1000).toISOString(), lastKnownKilometers: 10500, lastCheckInDate: new Date(Date.now() - 5*24*60*60*1000).toISOString() },
   { id: 'amb002', name: 'Ambulancia 02', licensePlate: 'ABC 789', model: 'Ford Transit', year: 2021, mechanicalReviewCompleted: true, cleaningCompleted: false, inventoryCompleted: false, lastCleaning: new Date(Date.now() - 2*24*60*60*1000).toISOString(), lastKnownKilometers: 22300, lastCheckInDate: new Date(Date.now() - 2*24*60*60*1000).toISOString()  },
   { id: 'amb003', name: 'Unidad Rápida B1', licensePlate: 'DEF 456', model: 'VW Crafter', year: 2023, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastKnownKilometers: 5200 },
-  ...generateSVBAmbulances(), // Añadir las nuevas ambulancias SVB
+  ...generateSVBAmbulances(),
 ];
 
 const initialConsumables: ConsumableMaterial[] = [
     { id: 'cons001', ambulanceId: 'amb001', name: 'Vendas Estériles (paquete 10)', reference: 'BNDG-01', quantity: 50, expiryDate: new Date(Date.now() + 30*24*60*60*1000).toISOString(), storageLocation: "Mochila Principal (Rojo)" },
-    { id: 'cons002', ambulanceId: 'amb001', name: 'Solución Salina 500ml', reference: 'SLN-05', quantity: 10, expiryDate: new Date(Date.now() - 5*24*60*60*1000).toISOString(), storageLocation: "Mochila Circulatorio (Amarillo)" }, // Expired
-    { id: 'cons003', ambulanceId: 'amb002', name: 'Guantes Estériles Talla M (Caja)', reference: 'GLV-M', quantity: 5, expiryDate: new Date(Date.now() + 5*24*60*60*1000).toISOString(), storageLocation: "Cajón Lateral Superior Izq." }, // Expiring soon
+    { id: 'cons002', ambulanceId: 'amb001', name: 'Solución Salina 500ml', reference: 'SLN-05', quantity: 10, expiryDate: new Date(Date.now() - 5*24*60*60*1000).toISOString(), storageLocation: "Mochila Circulatorio (Amarillo)" },
+    { id: 'cons003', ambulanceId: 'amb002', name: 'Guantes Estériles Talla M (Caja)', reference: 'GLV-M', quantity: 5, expiryDate: new Date(Date.now() + 5*24*60*60*1000).toISOString(), storageLocation: "Cajón Lateral Superior Izq." },
     { id: 'cons004', ambulanceId: 'amb001', name: 'Mascarilla RCP Adulto', reference: 'RCP-AD', quantity: 2, expiryDate: new Date(Date.now() + 100*24*60*60*1000).toISOString(), storageLocation: "Mochila Vía Aérea (Azul)" },
-    { id: 'cons005', ambulanceId: 'amb001', name: 'Apósitos Adhesivos (caja)', reference: 'APOS-MIX', quantity: 1, expiryDate: new Date(Date.now() + 60*24*60*60*1000).toISOString() }, // Sin ubicación asignada
+    { id: 'cons005', ambulanceId: 'amb001', name: 'Apósitos Adhesivos (caja)', reference: 'APOS-MIX', quantity: 1, expiryDate: new Date(Date.now() + 60*24*60*60*1000).toISOString() },
 ];
 
 const initialNonConsumables: NonConsumableMaterial[] = [
     { id: 'noncons001', ambulanceId: 'amb001', name: 'Desfibrilador Externo Automático (DEA)', serialNumber: 'DEFIB-A001', status: 'Operacional', storageLocation: "Mochila Principal (Rojo)" },
     { id: 'noncons002', ambulanceId: 'amb002', name: 'Camilla Principal Ruedas', serialNumber: 'STRCH-B012', status: 'Necesita Reparación', storageLocation: "Compartimento Principal Ambulancia" },
     { id: 'noncons003', ambulanceId: 'amb001', name: 'Pulsioxímetro Portátil', serialNumber: 'PULSI-X07', status: 'Operacional', storageLocation: "Mochila Principal (Rojo)" },
-    { id: 'noncons004', ambulanceId: 'amb001', name: 'Tabla Espinal Larga', serialNumber: 'SPNL-L003', status: 'Operacional' }, // Sin ubicación asignada
+    { id: 'noncons004', ambulanceId: 'amb001', name: 'Tabla Espinal Larga', serialNumber: 'SPNL-L003', status: 'Operacional' },
 ];
 
 
@@ -104,6 +152,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [nonConsumableMaterials, setNonConsumableMaterials] = useState<NonConsumableMaterial[]>(initialNonConsumables);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [revisionesDiariasVehiculo, setRevisionesDiariasVehiculo] = useState<RevisionDiariaVehiculo[]>([]);
+  const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>(initialUSVBKits);
+
 
   const accessibleAmbulances = useMemo(() => {
     if (authLoading || !user) return [];
@@ -305,22 +355,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const updatedAmb = {...amb};
         if (step === 'mechanical') updatedAmb.mechanicalReviewCompleted = status;
         if (step === 'cleaning') updatedAmb.cleaningCompleted = status;
-        if (step === 'inventory') updatedAmb.inventoryCompleted = status;
-
-        // Reset subsequent steps if a previous one is marked incomplete
-        if (step === 'mechanical' && !status) {
-          updatedAmb.cleaningCompleted = false;
-          updatedAmb.inventoryCompleted = false;
-        }
-        if (step === 'cleaning' && !status) {
-          updatedAmb.inventoryCompleted = false;
-        }
-        // If inventory is completed, reset the cycle for this ambulance
-        if (step === 'inventory' && status) {
-            updatedAmb.mechanicalReviewCompleted = false;
-            updatedAmb.cleaningCompleted = false;
-            updatedAmb.inventoryCompleted = false; // This effectively means the cycle is done and ready for a new one.
-            updatedAmb.lastInventoryCheck = new Date().toISOString();
+        if (step === 'inventory') {
+            updatedAmb.inventoryCompleted = status;
+            if (status) { // If inventory is marked complete
+                updatedAmb.lastInventoryCheck = new Date().toISOString();
+                // Reset the workflow for a new cycle
+                updatedAmb.mechanicalReviewCompleted = false;
+                updatedAmb.cleaningCompleted = false;
+                updatedAmb.inventoryCompleted = false;
+            }
+        } else { // If mechanical or cleaning is marked incomplete, subsequent steps are also incomplete
+            if (step === 'mechanical' && !status) {
+              updatedAmb.cleaningCompleted = false;
+              updatedAmb.inventoryCompleted = false;
+            }
+            if (step === 'cleaning' && !status) {
+              updatedAmb.inventoryCompleted = false;
+            }
         }
         return updatedAmb;
       }
@@ -328,12 +379,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  // --- Revisiones Diarias de Vehículo ---
+
   const getRevisionDiariaVehiculoByAmbulanceId = (ambulanceId: string): RevisionDiariaVehiculo | undefined => {
     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
       return undefined;
     }
-    // For simplicity, return the latest check for an ambulance. Could be a list.
     const checksForAmbulance = revisionesDiariasVehiculo.filter(c => c.ambulanceId === ambulanceId);
     return checksForAmbulance.sort((a, b) => new Date(b.checkDate).getTime() - new Date(a.checkDate).getTime())[0];
   };
@@ -347,18 +397,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
        console.warn("Intento no autorizado de guardar revisión diaria.");
        return;
     }
-    const existingCheckIndex = revisionesDiariasVehiculo.findIndex(c => c.ambulanceId === checkData.ambulanceId && c.checkDate.startsWith(checkData.checkDate.substring(0,10))); // Check if one exists for the same day
+    const existingCheckIndex = revisionesDiariasVehiculo.findIndex(c => c.ambulanceId === checkData.ambulanceId && c.checkDate.startsWith(checkData.checkDate.substring(0,10)));
 
     const newCheck: RevisionDiariaVehiculo = {
       ...checkData,
-      id: `rdv-${Date.now()}`, // Prefijo cambiado a rdv
+      id: `rdv-${Date.now()}`,
       submittedByUserId: user.id,
     };
 
     if (existingCheckIndex > -1) {
       setRevisionesDiariasVehiculo(prev => {
         const updatedChecks = [...prev];
-        updatedChecks[existingCheckIndex] = newCheck; // Replace existing check for the day
+        updatedChecks[existingCheckIndex] = newCheck;
         return updatedChecks;
       });
     } else {
@@ -370,14 +420,33 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return ambulanceStorageLocations;
   };
 
+  // --- USVB Kit Management ---
+  const getUSVBKitById = (kitId: string): USVBKit | undefined => {
+    return usvbKitsData.find(kit => kit.id === kitId);
+  };
 
-  const generateAlerts = () => {
-    if (authLoading) return;
+  const updateUSVBKitMaterialQuantity = (kitId: string, materialId: string, newQuantity: number) => {
+    setUsvbKitsData(prevKits =>
+      prevKits.map(kit => {
+        if (kit.id === kitId) {
+          return {
+            ...kit,
+            materials: kit.materials.map(material =>
+              material.id === materialId ? { ...material, quantity: Math.max(0, newQuantity) } : material
+            ),
+          };
+        }
+        return kit;
+      })
+    );
+  };
+  
+  const generateAlerts = useCallback(() => {
+    if (authLoading || !user) return; // Ensure user and auth state are ready
     const newAlerts: Alert[] = [];
     const today = new Date();
 
     accessibleAmbulances.forEach(ambulance => {
-      // Example: Alert if mechanical review is due (older than 14 days or never done)
       if (!ambulance.mechanicalReviewCompleted && (!ambulance.lastMechanicalReview || new Date(ambulance.lastMechanicalReview) < new Date(today.getTime() - 14*24*60*60*1000) )) {
         newAlerts.push({
           id: `alert-mr-${ambulance.id}`,
@@ -388,7 +457,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           createdAt: today.toISOString(),
         });
       }
-       // Example: Alert if cleaning is due (older than 7 days or never done) AND mechanical review is complete
        if (ambulance.mechanicalReviewCompleted && !ambulance.cleaningCompleted && (!ambulance.lastCleaning || new Date(ambulance.lastCleaning) < new Date(today.getTime() - 7*24*60*60*1000) )) {
         newAlerts.push({
           id: `alert-cl-${ambulance.id}`,
@@ -406,7 +474,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     
     relevantConsumableMaterials.forEach(material => {
       const expiryDate = new Date(material.expiryDate);
-      const ambulance = allAmbulancesData.find(a=> a.id === material.ambulanceId); // Use allAmbulancesData to get name
+      const ambulance = allAmbulancesData.find(a=> a.id === material.ambulanceId);
       const ambulanceName = ambulance ? ambulance.name : 'Ambulancia Desconocida';
       const daysUntilExpiry = (expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
 
@@ -420,7 +488,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           severity: 'high',
           createdAt: today.toISOString(),
         });
-      } else if (daysUntilExpiry <= 7) { // Consider 7 days as "expiring soon" for in-ambulance materials
+      } else if (daysUntilExpiry <= 7) {
         newAlerts.push({
           id: `alert-expsoon-${material.id}`,
           type: 'expiring_soon',
@@ -433,14 +501,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
     });
     setAlerts(newAlerts);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, allAmbulancesData]); // Added allAmbulancesData
 
   useEffect(() => {
     if (!authLoading) {
         generateAlerts();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, authLoading]);
+  }, [generateAlerts, authLoading]);
 
   const contextValue = {
     ambulances: accessibleAmbulances,
@@ -459,6 +527,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     getAllAmbulancesCount,
     revisionesDiariasVehiculo, getRevisionDiariaVehiculoByAmbulanceId, saveRevisionDiariaVehiculo,
     getAmbulanceStorageLocations,
+    usvbKits: usvbKitsData, getUSVBKitById, updateUSVBKitMaterialQuantity,
   };
 
   return (
@@ -475,3 +544,4 @@ export function useAppData() {
   }
   return context;
 }
+

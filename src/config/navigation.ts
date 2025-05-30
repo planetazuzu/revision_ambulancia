@@ -1,5 +1,5 @@
 
-import { LayoutDashboard, Ambulance, Bell, Wrench, Sparkles, Boxes, Settings, UserCircle, LogOut, Archive } from 'lucide-react';
+import { LayoutDashboard, Ambulance, Bell, Wrench, Sparkles, Boxes, Settings, UserCircle, LogOut, Archive, PackageSearch } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface NavItem {
@@ -13,7 +13,8 @@ export interface NavItem {
 export const mainNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
   { href: '/dashboard/ambulances', label: 'Ambulancias', icon: Ambulance },
-  { href: '/dashboard/ampulario', label: 'Gestión de Materiales', icon: Archive },
+  { href: '/dashboard/gestion-materiales', label: 'Gestión de Materiales', icon: Archive }, // Ruta de archivo no cambia
+  { href: '/dashboard/usvb-kit-inventory', label: 'Dotación USVB', icon: PackageSearch },
   { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
 ];
 
@@ -28,3 +29,4 @@ export const ambulanceWorkflowSteps = (ambulanceId: string) => [
   { name: "Registro de Limpieza", path: `/dashboard/ambulances/${ambulanceId}/cleaning`, icon: Sparkles, key: 'cleaningCompleted' },
   { name: "Control de Inventario", path: `/dashboard/ambulances/${ambulanceId}/inventory`, icon: Boxes, key: 'inventoryCompleted' },
 ];
+

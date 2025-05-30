@@ -44,7 +44,7 @@ body {
     --chart-4: 43 74% 66%;   
     --chart-5: 27 87% 67%;   
 
-    --radius: 0.5rem;
+    --radius: 0.25rem; /* Ajustado a 4px (0.25rem) para tarjetas según solicitud específica del módulo */
 
     /* Sidebar specific colors adapted to GdLR Theme */
     --sidebar-background: 210 10% 25%; /* Darker Grey for sidebar */
@@ -113,4 +113,3 @@ body {
     @apply bg-background text-foreground;
   }
 }
-
