@@ -69,7 +69,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <SidebarHeader className="flex items-center gap-2 p-4">
             <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
                 <Ambulance className="h-6 w-6 text-primary" />
-                <span className={cn(open ? "" : "sr-only")}>AmbuReview</span>
+                <span className={cn(open ? "" : "sr-only")}>AmbuGestión</span>
             </Link>
             <div className={cn("ml-auto", open ? "" : "hidden")}>
                 <SidebarTrigger />
@@ -120,3 +120,4 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
+

@@ -25,8 +25,8 @@ export default function LoginForm() {
         <div className="flex justify-center items-center mb-4">
           <Ambulance className="h-12 w-12 text-primary" />
         </div>
-        <CardTitle className="text-2xl font-bold">Acceso AmbuReview</CardTitle>
-        <CardDescription>Introduce tus credenciales para acceder al sistema.</CardDescription>
+        <CardTitle className="text-2xl font-bold">Acceso a AmbuGestión</CardTitle>
+        <CardDescription>Introduce tus credenciales para acceder al sistema de gestión de material de ambulancias.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -60,3 +60,4 @@ export default function LoginForm() {
     </Card>
   );
 }
+

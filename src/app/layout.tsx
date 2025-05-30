@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AmbuReview',
-  description: 'Sistema de Gestión de Revisiones de Ambulancias',
+  title: 'Gestión de Material de Ambulancias',
+  description: 'Sistema para la Gestión de Material y Revisiones de Ambulancias',
   manifest: '/manifest.json', // Añadido para PWA
   icons: { // Opcional: añadir iconos para diferentes propósitos, si los tienes
     apple: '/icons/icon-192x192.png', 
@@ -36,7 +36,7 @@ export default function RootLayout({
       <head>
         {/* El manifest.json también se puede añadir aquí, aunque Next.js puede gestionarlo desde metadata */}
         {/* <link rel="manifest" href="/manifest.json" /> */}
-        <meta name="theme-color" content="#4A8FE7" />
+        <meta name="theme-color" content="#73C23A" /> {/* GdLR Green */}
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider
@@ -56,3 +56,4 @@ export default function RootLayout({
     </html>
   );
 }
+
