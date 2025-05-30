@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo } from '@/types';
@@ -50,10 +49,30 @@ interface AppDataContextType {
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
+const generateSVBAmbulances = (): Ambulance[] => {
+  const svbAmbulances: Ambulance[] = [];
+  for (let i = 1; i <= 21; i++) {
+    const numberString = i.toString().padStart(3, '0'); // Formato B001, B002, ... B021
+    svbAmbulances.push({
+      id: `svb-b${numberString}`,
+      name: `SVB B${numberString}`,
+      licensePlate: `SVB-${numberString}`,
+      model: 'Furgoneta SVB',
+      year: 2023,
+      mechanicalReviewCompleted: false,
+      cleaningCompleted: false,
+      inventoryCompleted: false,
+      lastKnownKilometers: Math.floor(Math.random() * 500) + 100, // Kilometraje aleatorio entre 100 y 599
+    });
+  }
+  return svbAmbulances;
+};
+
 export const initialAmbulances: Ambulance[] = [
   { id: 'amb001', name: 'Ambulancia 01', licensePlate: 'XYZ 123', model: 'Mercedes Sprinter', year: 2022, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastMechanicalReview: new Date(Date.now() - 5*24*60*60*1000).toISOString(), lastKnownKilometers: 10500, lastCheckInDate: new Date(Date.now() - 5*24*60*60*1000).toISOString() },
   { id: 'amb002', name: 'Ambulancia 02', licensePlate: 'ABC 789', model: 'Ford Transit', year: 2021, mechanicalReviewCompleted: true, cleaningCompleted: false, inventoryCompleted: false, lastCleaning: new Date(Date.now() - 2*24*60*60*1000).toISOString(), lastKnownKilometers: 22300, lastCheckInDate: new Date(Date.now() - 2*24*60*60*1000).toISOString()  },
   { id: 'amb003', name: 'Unidad Rápida B1', licensePlate: 'DEF 456', model: 'VW Crafter', year: 2023, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastKnownKilometers: 5200 },
+  ...generateSVBAmbulances(), // Añadir las nuevas ambulancias SVB
 ];
 
 const initialConsumables: ConsumableMaterial[] = [
