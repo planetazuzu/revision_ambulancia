@@ -8,97 +8,103 @@ body {
 
 @layer base {
   :root {
-    --background: 210 25% 96%; /* Light Grey #F0F4F8 */
-    --foreground: 210 15% 25%; /* Darker Grey for text */
+    /* Gobierno de La Rioja Theme - Light Mode */
+    /* Based on --rioja-primary-hue: 92; --rioja-primary-saturation: 60%; --rioja-primary-lightness: 45%; (Green) */
+    /* Based on --rioja-gray-hue: 210; --rioja-gray-saturation: 10%; --rioja-gray-lightness: 40%; (Grey) */
+    /* Based on --rioja-gray-lightness-light: 96%; (Light Grey for card backgrounds) */
 
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 210 15% 25%;
+    --background: 210 10% 98%; /* GdLR Off-White/Very Light Grey */
+    --foreground: 210 10% 20%; /* GdLR Dark Grey for text */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 210 15% 25%;
+    --card: 210 10% 96%; /* GdLR Light Grey card background */
+    --card-foreground: 210 10% 20%; /* GdLR Dark Grey text on card */
 
-    --primary: 215 79% 60%; /* Blue #4A8FE7 */
-    --primary-foreground: 0 0% 100%; /* White */
+    --popover: 0 0% 100%; /* White for popovers */
+    --popover-foreground: 210 10% 20%; /* GdLR Dark Grey text on popover */
 
-    --secondary: 210 20% 88%; /* Lighter grey for secondary elements */
-    --secondary-foreground: 210 15% 25%;
+    --primary: 92 60% 45%; /* GdLR Corporate Green */
+    --primary-foreground: 0 0% 100%; /* White text on Green */
 
-    --muted: 210 20% 88%;
-    --muted-foreground: 210 15% 55%; /* Muted text */
+    --secondary: 210 10% 55%; /* GdLR Mid Grey */
+    --secondary-foreground: 0 0% 100%; /* White text on Mid Grey */
 
-    --accent: 16 100% 66%; /* Orange #FF7F50 */
-    --accent-foreground: 0 0% 100%; /* White */
+    --muted: 210 10% 90%; /* Lighter grey for muted backgrounds */
+    --muted-foreground: 210 10% 45%; /* GdLR Muted text */
 
-    --destructive: 0 70% 55%; /* A clearer red for destructive actions */
-    --destructive-foreground: 0 0% 100%;
+    --accent: 92 60% 55%; /* Lighter GdLR Green for accents */
+    --accent-foreground: 0 0% 100%; /* White text on Accent Green */
 
-    --border: 210 20% 85%;
+    --destructive: 0 70% 50%; /* Standard Red for destructive actions */
+    --destructive-foreground: 0 0% 100%; /* White text on Red */
+
+    --border: 210 10% 85%; /* GdLR Light border */
     --input: 0 0% 100%; /* White input background */
-    --ring: 215 79% 60%; /* Ring focus color to match primary */
+    --ring: 92 60% 45%; /* GdLR Green for focus rings */
 
-    --chart-1: 215 79% 60%;
-    --chart-2: 16 100% 66%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --chart-1: 92 60% 45%; /* GdLR Green */
+    --chart-2: 210 10% 50%; /* GdLR Grey */
+    --chart-3: 92 40% 60%;   /* Lighter/desaturated GdLR Green */
+    --chart-4: 43 74% 66%;   /* Keep one of the original AmbuReview accent chart colors for variety if needed */
+    --chart-5: 27 87% 67%;   /* Keep one of the original AmbuReview accent chart colors for variety if needed */
 
-    --radius: 0.5rem;
+    --radius: 0.5rem; /* Keep AmbuReview's original radius */
 
-    /* Sidebar specific colors */
-    --sidebar-background: 0 0% 100%; /* White sidebar */
-    --sidebar-foreground: 210 15% 35%; /* Slightly darker text for sidebar readability */
-    --sidebar-border: 210 20% 88%; /* Light border for sidebar */
-    --sidebar-accent: 210 25% 94%; /* Accent for hover/active items in sidebar - very light grey */
-    --sidebar-accent-foreground: 215 79% 60%; /* Primary color for text on sidebar accent */
-    --sidebar-primary: 215 79% 60%; /* Primary color for active item indicators */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-ring: 215 79% 60%;
+    /* AmbuReview Sidebar specific colors adapted to GdLR Theme */
+    --sidebar-background: 210 10% 96%; /* GdLR Light Grey (like card) */
+    --sidebar-foreground: 210 10% 30%; /* GdLR Darker Grey for sidebar text */
+    --sidebar-border: 210 10% 88%;     /* GdLR Lighter border for sidebar */
+    --sidebar-accent: 210 10% 90%;     /* Hover/active items - very light grey */
+    --sidebar-accent-foreground: 92 60% 45%; /* GdLR Green for text on sidebar accent */
+    --sidebar-primary: 92 60% 45%;          /* GdLR Green for active item indicators */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-ring: 92 60% 45%;             /* GdLR Green */
   }
 
   .dark {
-    --background: 210 10% 12%;
-    --foreground: 210 20% 90%;
+    /* Gobierno de La Rioja Theme - Dark Mode */
+    --background: 210 10% 15%; /* GdLR Dark background */
+    --foreground: 210 5% 85%;  /* GdLR Light text */
 
-    --card: 210 10% 18%;
-    --card-foreground: 210 20% 90%;
+    --card: 210 10% 20%; /* GdLR Dark card background */
+    --card-foreground: 210 5% 85%; /* GdLR Light text on card */
 
-    --popover: 210 10% 18%;
-    --popover-foreground: 210 20% 90%;
+    --popover: 210 10% 10%; /* Darker popover */
+    --popover-foreground: 210 5% 85%; /* Light text on popover */
 
-    --primary: 215 70% 55%;
+    --primary: 92 60% 50%; /* Slightly brighter GdLR Green for dark mode */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 10% 25%;
-    --secondary-foreground: 210 20% 90%;
+    --secondary: 210 10% 30%; /* Darker GdLR Mid Grey */
+    --secondary-foreground: 210 5% 85%;
 
     --muted: 210 10% 25%;
-    --muted-foreground: 210 10% 60%;
+    --muted-foreground: 210 5% 65%;
 
-    --accent: 16 90% 60%;
+    --accent: 92 60% 60%; /* Brighter GdLR Accent Green for dark mode */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 60% 50%;
+    --destructive: 0 60% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 10% 30%;
-    --input: 210 10% 25%; /* Darker input background */
-    --ring: 215 70% 55%;
+    --border: 210 10% 25%; /* Darker GdLR border */
+    --input: 210 10% 22%;  /* Darker input background */
+    --ring: 92 60% 50%;    /* Brighter GdLR Green for focus rings */
 
-    --chart-1: 215 70% 55%;
-    --chart-2: 16 90% 60%;
-    --chart-3: 197 37% 44%;
-    --chart-4: 43 74% 46%;
-    --chart-5: 27 87% 47%;
+    --chart-1: 92 60% 50%;
+    --chart-2: 210 10% 45%;
+    --chart-3: 92 40% 70%;
+    --chart-4: 43 74% 56%;
+    --chart-5: 27 87% 57%;
     
-    /* Dark Sidebar specific colors */
-    --sidebar-background: 210 10% 15%;
-    --sidebar-foreground: 210 20% 85%;
+    /* AmbuReview Dark Sidebar specific colors adapted to GdLR Theme */
+    --sidebar-background: 210 10% 18%; /* Slightly lighter than main dark bg */
+    --sidebar-foreground: 210 5% 80%;
     --sidebar-border: 210 10% 25%;
     --sidebar-accent: 210 10% 22%;
-    --sidebar-accent-foreground: 215 70% 55%;
-    --sidebar-primary: 215 70% 55%;
+    --sidebar-accent-foreground: 92 60% 50%;
+    --sidebar-primary: 92 60% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-ring: 215 70% 55%;
+    --sidebar-ring: 92 60% 50%;
   }
 }
 
