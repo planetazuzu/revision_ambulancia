@@ -11,53 +11,53 @@ import { useAuth } from './AuthContext';
 // --- USVB Kit Data Transformation ---
 
 const rawUSVBKitData: { [key: number]: string[] } = {
-  1: ["Mochila pediátrica"], // Placeholder name, actual content determined by other kits.
-  2: ["Mochila adulto"], // Placeholder name, actual content determined by other kits.
+  1: ["Mochila pediátrica"],  
+  2: ["Mochila adulto"],  
   3: [
-    "Kit de partos (1)", // Assuming (1) if not specified for complex items
-    "Kit de quemados (1)",
-    "Aspirador secreciones manual (1)",
-    "Nebulizador (1)",
-    "Botella urinaria (1)"
-  ],
+    "Kit de partos",
+    "Kit de quemados",
+    "Aspirador secreciones manual",
+    "Nebulizador",
+    "Botella urinaria"
+  ],  
   4: [
     "Mascarillas FFP3 (4)",
-    "Mascarillas quirúrgicas (1 caja)", // Will parse as 1, user can adjust text later
+    "Mascarillas quirúrgicas (1 caja)",
     "Gafas protectoras (4)",
     "Gorros protección (4)",
     "Batas protecciones desechables (10)",
-    "Mascarillas FFP2 (1 caja)" // Will parse as 1
-  ],
+    "Mascarillas FFP2 (1 caja)"
+  ],  
   5: [
     "Glucagón (1)",
     "Insulina rápida (1)",
     "Diacepan rectal 5 mg (1)",
     "Diacepan rectal 10 mg (1)",
     "Suero fisiológico 500 ml (1)"
-  ],
+  ],  
   6: [
     "Manitol (1)",
     "Ringer lactato (1)",
     "Suero fisiológico 500 ml (1)"
-  ],
+  ],  
   7: [
     "Sonda de aspiración nº 6–16 (2)",
     "Sonda Yankauer (2)"
-  ],
+  ],  
   8: [
     "Mascarilla I-gel nº 1–2,5 (1)",
     "Mascarilla I-gel nº 3–5 (1)"
-  ],
+  ],  
   9: [
     "Cánula Güelde nº 000–5 (2)",
     "Filtro bacteriano (2)",
     "Bolsa aspiradora (2)"
-  ],
+  ],  
   10: [
     "Empapadores (5)",
     "Bateas (5)",
     "Esponjas jabonosas (2)"
-  ],
+  ],  
   11: [
     "Fonendoscopio (1)",
     "Esfigmomanómetro manual adulto-pediátrico (1)",
@@ -69,11 +69,11 @@ const rawUSVBKitData: { [key: number]: string[] } = {
     "Pulsioxímetro pediátrico (1)",
     "Lancetas (10)",
     "Pupilera (1)",
-    "Tiras reactivas (1 caja)", // parse as 1
+    "Tiras reactivas (1 caja)",
     "Torniquete (1)",
-    "Tijera cortarropa (1)", // Assume 1
+    "Tijera cortarropa",
     "Rasuradoras (3)"
-  ],
+  ],  
   12: [
     "Sutura 2/0-3/0 (2)",
     "Bisturí con mango (4)",
@@ -92,9 +92,9 @@ const rawUSVBKitData: { [key: number]: string[] } = {
     "Vaselina (1)",
     "Cable LAERDAL 220 V (1)",
     "Válvula de Heimlich (1)",
-    "Pleurocath 6 F (1)", // Assume 1
-    "Pleurocath 8 F (1)"  // Assume 1
-  ],
+    "Pleurocath 6 F",
+    "Pleurocath 8 F"
+  ],  
   13: [
     "Alargaderas (4)",
     "Mascarilla traqueotomizados (1)",
@@ -102,15 +102,15 @@ const rawUSVBKitData: { [key: number]: string[] } = {
     "Gafas nasales adulto (6)",
     "Mascarilla reservorio adulto (3)",
     "Mascarilla nebulización adulto (3)"
-  ],
+  ],  
   14: [
     "Compresas (12)",
     "Gasas (12)"
-  ],
+  ],  
   15: [
     "Ambu adulto (1)",
     "Tubo corrugado (2)"
-  ],
+  ],  
   16: [
     "Mascarilla Ventimask pediátrica (2)",
     "Gafas nasales pediátrica (2)",
@@ -119,27 +119,27 @@ const rawUSVBKitData: { [key: number]: string[] } = {
     "Ambu pediátrico (1)",
     "Ambu neonato (1)",
     "Mascarilla Ambu nº 0-5 (1)"
-  ],
+  ],  
   17: [
     "Correa inmovilización araña (1)",
     "Kidi-safe (1)",
-    "Manta (1)", // Assume 1
-    "Sábanas (2)" // Assume 2 for sheets
-  ],
+    "Manta",
+    "Sábanas"
+  ],  
   18: [
     "Cinturón pélvico (1)",
     "Salvafast (1)",
     "Lona de rescate (1)"
-  ],
+  ],  
   19: [
     "Inmovilizador cabeza (1)",
-    "Juego collarines (2)", // Refers to a set
-    "Correas camilla-tijera (1 juego)" // Refers to a set
-  ],
+    "Juego collarines (2)",
+    "Correas camilla-tijera (1 juego)"
+  ],  
   20: [
     "Colchón vacío (1)",
-    "Férulas neopreno (1)" // Refers to a set
-  ],
+    "Férulas neopreno (1)"
+  ],  
   21: [
     "Venda elástica cohesiva (2)",
     "Venda crepé (2)",
@@ -152,16 +152,66 @@ const rawUSVBKitData: { [key: number]: string[] } = {
     "Botellín agua (1)",
     "Caja dentadura (2)",
     "Mantas térmicas (4)"
-  ],
-  22: ["Guantes de nitrilo S, M, L (1 caja)"], // Assume 1 box for all sizes
-  23: ["Ampulario (1)"], // Placeholder for medication ampoules kit
+  ],  
+  22: ["Guantes de nitrilo S, M, L (1 caja)"],
+  23: ["Ampulario (1)"],  
   24: [
     "Pilas AAA (8)",
     "Pilas AA (4)",
     "Pilas CR2022 (2)",
     "Llaves ampulario/bolardos, etc. (1 juego)"
+  ],  
+  25: [
+    "Jeringa insulina 1 ml (3)",
+    "Jeringa 5 ml (5)",
+    "Jeringa 10 ml (5)",
+    "Jeringa 20 ml (2)",
+    "Jeringa atomizadora (2)",
+    "Suero fisiológico 10 ml (10)",
+    "Clorhexidina acuosa (5)"
+  ],  
+  26: [
+    "Steri-strip (2)",
+    "Apósito adhesivo tejido (5)",
+    "Acetona (1)",
+    "Aguja carga 19 G (5)",
+    "Aguja IM 21 G (5)",
+    "Aguja SC 25 G (5)",
+    "Extracción sanguínea adulto (2)",
+    "Extracción sanguínea pediátrico (1)",
+    "Catéter venoso 14–24 G (3)",
+    "Aguja reservorio (2)",
+    "Compresor (2)",
+    "Tapones vía (5)"
+  ],  
+  27: [
+    "Papelera",
+    "Limpia-cristales (1)",
+    "Limpiador superficies (1)",
+    "Bolsas de basura (1)"
+  ],  
+  28: [
+    "Apósitos adhesivos transparentes (5)",
+    "Llaves 3 vías con alargadera (5)",
+    "Equipos macro-gotero (3)",
+    "Regulador Dial-A-Flow (1)",
+    "Paracetamol 1 g IV (2)",
+    "Ondansetron (2)",
+    "Suero lava-flac (5)",
+    "Ringer lactato (1)",
+    "Poligelina (1)",
+    "Suero glucosado 5 % 100 ml (2)",
+    "Suero glucosado 5 % 250 ml (2)",
+    "Glucosado 50 % (2)",
+    "Suero fisiológico 500 ml (3)",
+    "Suero fisiológico 100 ml (4)",
+    "Extractor/compresor sueros (1)"
+  ],  
+  29: ["Férulas vacío (1)"],  
+  30: [
+    "Ferno Keed (1)",
+    "Férula tracción adulta (1)"
   ]
-  // Kit 25 is incomplete in user's prompt, so it's omitted for now.
 };
 
 const kitDetailsMap: { [key: number]: { name: string; iconName: string; genericImageHint: string } } = {
@@ -171,7 +221,7 @@ const kitDetailsMap: { [key: number]: { name: string; iconName: string; genericI
   4: { name: "Kit EPI y Bioseguridad", iconName: "ShieldAlert", genericImageHint: "ppe kit" },
   5: { name: "Kit Medicación Urgente", iconName: "Pill", genericImageHint: "urgent medication" },
   6: { name: "Kit Fluidoterapia", iconName: "Droplet", genericImageHint: "iv fluids" },
-  7: { name: "Kit Aspiración Secreciones", iconName: "Filter", genericImageHint: "suction supplies" }, // Used Filter as placeholder
+  7: { name: "Kit Aspiración Secreciones", iconName: "Filter", genericImageHint: "suction supplies" },
   8: { name: "Kit Vía Aérea (I-gel)", iconName: "Wind", genericImageHint: "airway management" },
   9: { name: "Kit Vía Aérea (Cánulas/Filtros)", iconName: "Wind", genericImageHint: "airway accessories" },
   10: { name: "Kit Higiene y Cuidados", iconName: "Sparkles", genericImageHint: "hygiene patient care" },
@@ -181,38 +231,44 @@ const kitDetailsMap: { [key: number]: { name: string; iconName: string; genericI
   14: { name: "Kit Apósitos y Gasas", iconName: "Bandage", genericImageHint: "dressings gauze" },
   15: { name: "Kit Reanimación Adulto (Ambu)", iconName: "HeartPulse", genericImageHint: "ambu bag adult" },
   16: { name: "Kit Oxigenoterapia/Reanimación Pediátrica", iconName: "Baby", genericImageHint: "pediatric oxygen ambu" },
-  17: { name: "Kit Inmovilización y Transporte", iconName: "Accessibility", genericImageHint: "immobilization transport" },
+  17: { name: "Kit Inmovilización y Transporte", iconName: "Accessibility", genericImageHint: "immobilization transport" }, // Consider changing icon if needed for more specificity
   18: { name: "Kit Rescate y Seguridad", iconName: "Anchor", genericImageHint: "rescue safety" },
-  19: { name: "Kit Inmovilización Cervical", iconName: "UserCog", genericImageHint: "cervical collars head immobilizer" }, // UserCog as placeholder
-  20: { name: "Kit Inmovilización Colchón/Férulas", iconName: "BedSingle", genericImageHint: "vacuum mattress splints" },
+  19: { name: "Kit Inmovilización Cervical", iconName: "UserCog", genericImageHint: "cervical collars head immobilizer" },
+  20: { name: "Kit Inmovilización Colchón/Férulas Neopreno", iconName: "BedSingle", genericImageHint: "vacuum mattress splints" },
   21: { name: "Kit Consumibles Varios", iconName: "Archive", genericImageHint: "general consumables" },
   22: { name: "Guantes Nitrilo (S,M,L)", iconName: "Hand", genericImageHint: "nitrile gloves" },
-  23: { name: "Ampulario Medicación", iconName: "Syringe", genericImageHint: "medication ampoules" },
+  23: { name: "Ampulario Medicación", iconName: "Syringe", genericImageHint: "medication ampoules" }, // Consider 'BoxIcon' if it's a box
   24: { name: "Kit Baterías y Llaves", iconName: "KeyRound", genericImageHint: "batteries keys" },
+  25: { name: "Kit Jeringas y Sueros Pequeños", iconName: "Syringe", genericImageHint: "syringes saline" },
+  26: { name: "Kit Material de Punción y Apósitos", iconName: "Bandage", genericImageHint: "needles dressings" },
+  27: { name: "Kit Material de Limpieza", iconName: "Trash2", genericImageHint: "cleaning supplies" },
+  28: { name: "Kit Fluidoterapia y Medicación IV", iconName: "Droplet", genericImageHint: "iv fluids medication" },
+  29: { name: "Kit Férulas de Vacío", iconName: "Layers", genericImageHint: "vacuum splints" }, // 'Layers' can represent the structure
+  30: { name: "Kit Inmovilización Avanzada (KED/Tracción)", iconName: "Truck", genericImageHint: "ked traction splint" } // 'Truck' for KED, or 'Bone' for traction
 };
 
 
 const parseMaterialString = (materialStr: string): { name: string; quantity: number } => {
-  const match = materialStr.match(/(.+?)\s*\((\d+)\s*(\w*)\)$/); // Matches "Name (Quantity Unit)" or "Name (Quantity)"
-  const matchOnlyQty = materialStr.match(/(.+?)\s*\((\d+)\)$/); // Fallback for "Name (Quantity)"
-  const matchBox = materialStr.match(/(.+?)\s*\((\d*\s*caja)\)$/i); // Matches "Name (1 caja)" or "Name (caja)"
+  const match = materialStr.match(/(.+?)\s*\((\d+)\s*(\w*)\)$/); 
+  const matchOnlyQty = materialStr.match(/(.+?)\s*\((\d+)\)$/); 
+  const matchBox = materialStr.match(/(.+?)\s*\((\d*\s*caja)\)$/i);
+  const matchSet = materialStr.match(/(.+?)\s*\((\d*\s*juego)\)$/i);
   
   if (matchBox) {
-    return { name: matchBox[1].trim(), quantity: 1 }; // Assume "1 caja" means 1 unit of box
+    return { name: matchBox[1].trim(), quantity: 1 }; 
+  }
+  if (matchSet) {
+    return { name: matchSet[1].trim(), quantity: 1 };
   }
   if (match) {
     let name = match[1].trim();
     const quantity = parseInt(match[2], 10);
-    // if (match[3]) name += ` ${match[3]}`; // Append unit to name if present, e.g. "Suero fisiológico 500 ml"
     return { name, quantity };
   }
   if (matchOnlyQty) {
     return { name: matchOnlyQty[1].trim(), quantity: parseInt(matchOnlyQty[2], 10) };
   }
-  // If no quantity is specified, or "juego" or "kit", assume 1.
-  if (materialStr.toLowerCase().includes("juego") || materialStr.toLowerCase().includes("kit de")) {
-    return { name: materialStr.trim(), quantity: 1 };
-  }
+  
   return { name: materialStr.trim(), quantity: 1 };
 };
 
@@ -224,10 +280,10 @@ const processedUSVBKits: USVBKit[] = Object.entries(rawUSVBKitData)
     const materials: USVBKitMaterial[] = materialStrings.map((matStr, index) => {
       const parsed = parseMaterialString(matStr);
       return {
-        id: `usvb-kit${kitNumber}-mat-${index}-${parsed.name.replace(/\s+/g, '-').toLowerCase()}`,
+        id: `usvb-kit${kitNumber}-mat-${index}-${parsed.name.replace(/\s+/g, '-').toLowerCase().substring(0,50)}`, // Added substring to avoid overly long ids
         name: parsed.name,
         quantity: parsed.quantity,
-        targetQuantity: parsed.quantity, // Target is same as initial quantity for these examples
+        targetQuantity: parsed.quantity, 
       };
     });
 
@@ -344,7 +400,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [nonConsumableMaterials, setNonConsumableMaterials] = useState<NonConsumableMaterial[]>(initialNonConsumables);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [revisionesDiariasVehiculo, setRevisionesDiariasVehiculo] = useState<RevisionDiariaVehiculo[]>([]);
-  const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>(processedUSVBKits); // Use processed data
+  const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>(processedUSVBKits); 
 
 
   const accessibleAmbulances = useMemo(() => {
@@ -549,14 +605,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (step === 'cleaning') updatedAmb.cleaningCompleted = status;
         if (step === 'inventory') {
             updatedAmb.inventoryCompleted = status;
-            if (status) { // If inventory is marked complete
+            if (status) { 
                 updatedAmb.lastInventoryCheck = new Date().toISOString();
-                // Reset the workflow for a new cycle
+                
                 updatedAmb.mechanicalReviewCompleted = false;
                 updatedAmb.cleaningCompleted = false;
                 updatedAmb.inventoryCompleted = false;
             }
-        } else { // If mechanical or cleaning is marked incomplete, subsequent steps are also incomplete
+        } else { 
             if (step === 'mechanical' && !status) {
               updatedAmb.cleaningCompleted = false;
               updatedAmb.inventoryCompleted = false;
@@ -634,7 +690,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
   
   const generateAlerts = useCallback(() => {
-    if (authLoading || !user) return; // Ensure user and auth state are ready
+    if (authLoading || !user) return; 
     const newAlerts: Alert[] = [];
     const today = new Date();
 
@@ -694,7 +750,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
     setAlerts(newAlerts);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user, accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, allAmbulancesData]); // Added allAmbulancesData
+  }, [authLoading, user, accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, allAmbulancesData]); 
 
   useEffect(() => {
     if (!authLoading) {
