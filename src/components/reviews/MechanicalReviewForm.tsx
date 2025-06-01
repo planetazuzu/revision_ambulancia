@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -86,7 +86,7 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
           notes: '',
         }));
     form.reset({ items: initialItems });
-  }, [existingReview, form.reset, ambulance.id]); // Depender de existingReview y form.reset (que es estable) y ambulance.id
+  }, [existingReview, form, ambulance.id]); // form.reset es estable, no necesita estar en dependencias si no cambia su referencia
 
   const onSubmit = (data: MechanicalReviewFormValues) => {
     if (!user) {
@@ -222,5 +222,3 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
     </Card>
   );
 }
-
-    
