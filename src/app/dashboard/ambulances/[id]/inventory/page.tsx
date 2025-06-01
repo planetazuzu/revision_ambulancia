@@ -5,13 +5,17 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAppData } from '@/contexts/AppDataContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InventoryTable, consumableColumns, nonConsumableColumns } from '@/components/inventory/InventoryTable';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import type { ConsumableMaterial, NonConsumableMaterial, AmbulanceStorageLocation } from '@/types';
-import { Package } from 'lucide-react';
+import type { ConsumableMaterial, NonConsumableMaterial, AmbulanceStorageLocation, Ambulance, MaterialStatus, NonConsumableMaterialStatus } from '@/types';
+import { Package, Upload, Download } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import Papa from 'papaparse';
+import { format, parse, isValid, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const UNASSIGNED_LOCATION_KEY = "unassigned_location";
 const UNASSIGNED_LOCATION_LABEL = "Ubicación no Especificada";
@@ -19,12 +23,26 @@ const UNASSIGNED_LOCATION_LABEL = "Ubicación no Especificada";
 export default function InventoryPage() {
   const params = useParams();
   const router = useRouter();
-  const { getAmbulanceById, getConsumableMaterialsByAmbulanceId, getNonConsumableMaterialsByAmbulanceId, updateAmbulanceWorkflowStep, getAmbulanceStorageLocations } = useAppData();
+  const { 
+    getAmbulanceById, 
+    getConsumableMaterialsByAmbulanceId, 
+    getNonConsumableMaterialsByAmbulanceId, 
+    updateAmbulanceWorkflowStep, 
+    getAmbulanceStorageLocations,
+    addConsumableMaterial,
+    updateConsumableMaterial,
+    addNonConsumableMaterial,
+    updateNonConsumableMaterial
+  } = useAppData();
   const { toast } = useToast();
+  const { user } = useAuth();
   const id = typeof params.id === 'string' ? params.id : '';
 
   const ambulance = getAmbulanceById(id);
   const allPossibleStorageLocations = useMemo(() => getAmbulanceStorageLocations(), [getAmbulanceStorageLocations]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isCoordinator = user?.role === 'coordinador';
 
   useEffect(() => {
     if (ambulance && (!ambulance.mechanicalReviewCompleted || !ambulance.cleaningCompleted)) {
@@ -65,19 +83,188 @@ export default function InventoryPage() {
   const getSortedLocationKeys = (groupedMaterials: Record<string, any[]>): string[] => {
     const keys = Object.keys(groupedMaterials);
     return keys.sort((a, b) => {
-      if (a === UNASSIGNED_LOCATION_KEY) return 1; // Put unassigned last
+      if (a === UNASSIGNED_LOCATION_KEY) return 1;
       if (b === UNASSIGNED_LOCATION_KEY) return -1;
       const indexA = allPossibleStorageLocations.indexOf(a as AmbulanceStorageLocation);
       const indexB = allPossibleStorageLocations.indexOf(b as AmbulanceStorageLocation);
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB; // Sort by predefined order
-      if (indexA !== -1) return -1; // Predefined locations first
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
       if (indexB !== -1) return 1;
-      return a.localeCompare(b); // Alphabetical for custom/unknown locations
+      return a.localeCompare(b);
     });
   };
   
   const consumableLocationKeys = useMemo(() => getSortedLocationKeys(groupedConsumables), [groupedConsumables, allPossibleStorageLocations]);
   const nonConsumableLocationKeys = useMemo(() => getSortedLocationKeys(groupedNonConsumables), [groupedNonConsumables, allPossibleStorageLocations]);
+
+  const handleExportCSV = () => {
+    if (!ambulance) return;
+
+    const dataToExport = [
+      ['nombre', 'tipo', 'referencia_o_serie', 'cantidad_o_estado', 'fecha_caducidad', 'ubicacion_almacenamiento']
+    ];
+
+    consumableMaterials.forEach(m => {
+      dataToExport.push([
+        m.name,
+        'consumible',
+        m.reference,
+        m.quantity.toString(),
+        m.expiryDate ? format(parseISO(m.expiryDate), 'yyyy-MM-dd') : '',
+        m.storageLocation || ''
+      ]);
+    });
+
+    nonConsumableMaterials.forEach(m => {
+      dataToExport.push([
+        m.name,
+        'no_consumible',
+        m.serialNumber,
+        m.status,
+        '', // No expiry date for non-consumables
+        m.storageLocation || ''
+      ]);
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + Papa.unparse(dataToExport);
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `inventario_ambulancia_${ambulance.name.replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: "Exportación CSV", description: "Inventario exportado correctamente." });
+  };
+
+  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !ambulance) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        let importedCount = 0;
+        let updatedCount = 0;
+        const errors: string[] = [];
+
+        results.data.forEach((row: any, index) => {
+          const { nombre, tipo, referencia_o_serie, cantidad_o_estado, fecha_caducidad, ubicacion_almacenamiento } = row;
+
+          if (!nombre || !tipo) {
+            errors.push(`Fila ${index + 2}: Faltan campos obligatorios (nombre, tipo).`);
+            return;
+          }
+
+          const storageLocation = ubicacion_almacenamiento || undefined;
+
+          if (tipo.toLowerCase() === 'consumible') {
+            if (!referencia_o_serie) {
+              errors.push(`Fila ${index + 2} (Consumible: ${nombre}): Falta el campo 'referencia_o_serie'.`);
+              return;
+            }
+            const quantity = parseInt(cantidad_o_estado, 10);
+            if (isNaN(quantity) || quantity < 0) {
+              errors.push(`Fila ${index + 2} (Consumible: ${nombre}): Cantidad inválida '${cantidad_o_estado}'.`);
+              return;
+            }
+
+            let parsedExpiryDate: Date | null = null;
+            if (fecha_caducidad) {
+              // Try parsing YYYY-MM-DD first
+              parsedExpiryDate = parse(fecha_caducidad, 'yyyy-MM-dd', new Date());
+              if (!isValid(parsedExpiryDate)) {
+                // Try parsing DD/MM/YYYY
+                parsedExpiryDate = parse(fecha_caducidad, 'dd/MM/yyyy', new Date());
+              }
+              if (!isValid(parsedExpiryDate)) {
+                errors.push(`Fila ${index + 2} (Consumible: ${nombre}): Formato de fecha de caducidad inválido '${fecha_caducidad}'. Use AAAA-MM-DD o DD/MM/AAAA.`);
+                return;
+              }
+            }
+            if (!parsedExpiryDate) {
+                 errors.push(`Fila ${index + 2} (Consumible: ${nombre}): La fecha de caducidad es obligatoria para materiales consumibles.`);
+                return;
+            }
+
+            const existingMaterial = consumableMaterials.find(m => m.name === nombre && m.reference === referencia_o_serie && m.ambulanceId === ambulance.id);
+            const materialData: ConsumableMaterial = {
+              id: existingMaterial?.id || `temp-id-${Date.now()}`, // temp id if new
+              ambulanceId: ambulance.id,
+              name: nombre,
+              reference: referencia_o_serie,
+              quantity,
+              expiryDate: format(parsedExpiryDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+              storageLocation,
+            };
+
+            if (existingMaterial) {
+              updateConsumableMaterial(materialData);
+              updatedCount++;
+            } else {
+              addConsumableMaterial(materialData);
+              importedCount++;
+            }
+
+          } else if (tipo.toLowerCase() === 'no_consumible') {
+            if (!referencia_o_serie) {
+                errors.push(`Fila ${index + 2} (No Consumible: ${nombre}): Falta el campo 'referencia_o_serie' (número de serie).`);
+                return;
+            }
+            const validStatuses: NonConsumableMaterialStatus[] = ['Operacional', 'Necesita Reparación', 'Fuera de Servicio'];
+            if (!validStatuses.includes(cantidad_o_estado as NonConsumableMaterialStatus)) {
+              errors.push(`Fila ${index + 2} (No Consumible: ${nombre}): Estado inválido '${cantidad_o_estado}'. Válidos: ${validStatuses.join(', ')}.`);
+              return;
+            }
+
+            const existingMaterial = nonConsumableMaterials.find(m => m.name === nombre && m.serialNumber === referencia_o_serie && m.ambulanceId === ambulance.id);
+            const materialData: NonConsumableMaterial = {
+              id: existingMaterial?.id || `temp-id-${Date.now()}`, // temp id if new
+              ambulanceId: ambulance.id,
+              name: nombre,
+              serialNumber: referencia_o_serie,
+              status: cantidad_o_estado as NonConsumableMaterialStatus,
+              storageLocation,
+            };
+            if (existingMaterial) {
+              updateNonConsumableMaterial(materialData);
+              updatedCount++;
+            } else {
+              addNonConsumableMaterial(materialData);
+              importedCount++;
+            }
+          } else {
+            errors.push(`Fila ${index + 2}: Tipo de material desconocido '${tipo}'. Use "consumible" o "no_consumible".`);
+          }
+        });
+
+        if (errors.length > 0) {
+          toast({
+            title: "Errores en la Importación CSV",
+            description: (
+              <div className="max-h-40 overflow-y-auto">
+                <p>{importedCount} importados, {updatedCount} actualizados.</p>
+                <ul className="list-disc pl-5 mt-2">
+                  {errors.map((err, i) => <li key={i}>{err}</li>)}
+                </ul>
+              </div>
+            ),
+            variant: "destructive",
+            duration: 10000,
+          });
+        } else {
+          toast({ title: "Importación CSV Exitosa", description: `${importedCount} materiales importados, ${updatedCount} materiales actualizados.` });
+        }
+      },
+      error: (error: Error) => {
+        toast({ title: "Error al Leer CSV", description: error.message, variant: "destructive" });
+      }
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Reset file input
+    }
+  };
 
 
   if (!ambulance) {
@@ -113,15 +300,9 @@ export default function InventoryPage() {
           <p className="text-muted-foreground text-center py-4">No hay materiales {materialType === 'consumable' ? 'consumibles' : 'no consumibles'} registrados para esta ambulancia.</p>
           <div className="flex justify-center">
             <Button onClick={() => {
-              // Trigger adding a new material, perhaps open the form directly
-              // This part needs a way to communicate with InventoryTable's "Add New" or MaterialForm
-              // For now, we can just say "use the add button inside a location if it existed"
-              // Or, we can have a generic add button here if no locations exist yet.
-              // For simplicity, we'll rely on the table's add button if any location is shown.
-              // If no materials at all, we could provide a generic add.
-              // Let's just show a placeholder for adding.
-              // TODO: Open MaterialForm directly if no materials/locations.
-              // The current InventoryTable component handles adding via its internal "Add New" button.
+              // This will be handled by the "Add New" button inside the InventoryTable
+              // or a generic one if no locations exist.
+              // For now, relying on the add button in InventoryTable.
             }}>Añadir Primer Material {materialType === 'consumable' ? 'Consumible' : 'No Consumible'}</Button>
           </div>
         </div>
@@ -159,7 +340,29 @@ export default function InventoryPage() {
 
   return (
     <Card className="shadow-lg">
-        <CardContent className="pt-6">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Inventario de {ambulance.name}</CardTitle>
+            {isCoordinator && (
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  accept=".csv"
+                  ref={fileInputRef}
+                  onChange={handleImportCSV}
+                  className="hidden"
+                />
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="mr-2 h-4 w-4" /> Importar CSV
+                </Button>
+                <Button variant="outline" onClick={handleExportCSV}>
+                  <Download className="mr-2 h-4 w-4" /> Exportar CSV
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0"> {/* Ajustado pt-0 porque el título ya está en CardHeader */}
             <Tabs defaultValue="consumables">
                 <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="consumables">Consumibles</TabsTrigger>
