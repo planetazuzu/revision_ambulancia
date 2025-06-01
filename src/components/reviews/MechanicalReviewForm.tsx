@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import type { ChecklistItem, MechanicalReview, ChecklistItemStatus, Ambulance } from '@/types';
 import { useAppData } from '@/contexts/AppDataContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,13 +62,12 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   
-  // existingReview se obtiene una vez basado en ambulance.id
   const existingReview = useMemo(() => getMechanicalReviewByAmbulanceId(ambulance.id), [getMechanicalReviewByAmbulanceId, ambulance.id]);
 
   const form = useForm<MechanicalReviewFormValues>({
     resolver: zodResolver(mechanicalReviewSchema),
     defaultValues: {
-      items: [], // Iniciar con array vacío, useEffect se encargará de poblarlo
+      items: [], 
     },
   });
 
@@ -80,13 +80,13 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
     const initialItems = existingReview
       ? existingReview.items.map(item => ({...item, status: item.status as ChecklistItemStatus}))
       : defaultChecklistItemsData.map((item, index) => ({
-          id: `default-${ambulance.id}-${index}-${item.name.replace(/\s+/g, '-').toLowerCase()}`, // ID más estable y único
+          id: `default-${ambulance.id}-${index}-${item.name.replace(/\s+/g, '-').toLowerCase()}`, 
           name: item.name,
           status: 'N/A' as ChecklistItemStatus,
           notes: '',
         }));
     form.reset({ items: initialItems });
-  }, [existingReview, form, ambulance.id]); // form.reset es estable, no necesita estar en dependencias si no cambia su referencia
+  }, [existingReview, form, ambulance.id]); 
 
   const onSubmit = (data: MechanicalReviewFormValues) => {
     if (!user) {
@@ -106,7 +106,6 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
   };
 
   const handleAddItem = () => {
-    // Usar un ID único y temporal para el nuevo ítem personalizado
     append({ id: `custom-item-${Date.now()}-${fields.length}`, name: '', status: 'N/A', notes: '' });
   };
 
@@ -116,7 +115,6 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
     { value: 'N/A', label: 'N/A' },
   ];
 
-  // console.log("Rendering MechanicalReviewForm. Fields:", fields); // Para depuración si es necesario
 
   return (
     <Card className="shadow-lg">
@@ -126,21 +124,27 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="h-[calc(100vh-26rem)] md:h-[500px] pr-4"> {/* Altura ajustada y responsiva */}
+            <ScrollArea className="h-[calc(100vh-26rem)] md:h-[500px] pr-4"> 
               <div className="space-y-6">
                 {fields.map((field, index) => (
-                  <Card key={field.id} className="p-4 bg-card/50"> {/* field.id es el ID estable de useFieldArray */}
+                  <Card key={field.id} className="p-4 bg-card/50"> 
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-4 items-start">
                       <FormField
                         control={form.control}
                         name={`items.${index}.name`}
                         render={({ field: nameField }) => (
-                           // Comprobar si el ítem es uno de los predeterminados (por su nombre)
-                           // para decidir si el nombre es editable o solo una etiqueta.
-                           // Esto asume que los nombres de los ítems predeterminados son únicos y no cambian.
                            defaultChecklistItemsData.some(defaultItem => defaultItem.name === form.getValues(`items.${index}.name`)) ?
-                           <Label className="font-semibold text-md pt-2 col-span-1 md:col-span-3">{nameField.value}</Label> :
-                           <Input {...nameField} placeholder="Nombre ítem personalizado" className="font-semibold text-md"/>
+                           <FormItem className="col-span-1 md:col-span-3">
+                             <FormLabel className="font-semibold text-md pt-2 ">{nameField.value}</FormLabel>
+                           </FormItem>
+                            :
+                           <FormItem className="col-span-1 md:col-span-3">
+                             <FormLabel className="sr-only">Nombre ítem personalizado</FormLabel>
+                             <FormControl>
+                               <Input {...nameField} placeholder="Nombre ítem personalizado" className="font-semibold text-md"/>
+                             </FormControl>
+                             <FormMessage/>
+                           </FormItem>
                         )}
                       />
                       <div className="col-span-1 md:col-span-3">
@@ -148,28 +152,32 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
                             control={form.control}
                             name={`items.${index}.status`}
                             render={({ field: statusField }) => (
-                                <>
+                                <FormItem>
+                                <FormLabel className="sr-only">Estado</FormLabel>
                                 <RadioGroup
                                     onValueChange={statusField.onChange}
                                     value={statusField.value}
-                                    className="flex flex-col sm:flex-row gap-2 sm:gap-4" // Ajuste de gap
+                                    className="flex flex-col sm:flex-row gap-2 sm:gap-4" 
                                 >
                                     {statusOptions.map((statusOpt) => (
-                                    <Label
-                                        key={statusOpt.value}
-                                        htmlFor={`${field.id}-${statusOpt.value}`} // Usar field.id para el htmlFor y el id del RadioGroupItem
-                                        className={cn(
-                                        "flex items-center space-x-2 cursor-pointer rounded-md border p-3 transition-colors hover:bg-accent hover:text-accent-foreground flex-1 min-w-[80px] justify-center sm:min-w-0", // Clases para responsividad y estilo
-                                        statusField.value === statusOpt.value && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                                        )}
-                                    >
-                                        <RadioGroupItem value={statusOpt.value} id={`${field.id}-${statusOpt.value}`} />
+                                    <FormItem key={statusOpt.value} className="flex-1">
+                                        <FormControl>
+                                        <RadioGroupItem value={statusOpt.value} id={`${field.id}-${statusOpt.value}`} className="sr-only peer"/>
+                                        </FormControl>
+                                        <Label
+                                            htmlFor={`${field.id}-${statusOpt.value}`}
+                                            className={cn(
+                                            "flex items-center justify-center space-x-2 cursor-pointer rounded-md border p-3 transition-colors hover:bg-accent hover:text-accent-foreground min-w-[80px]", 
+                                            "peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:hover:bg-primary/90"
+                                            )}
+                                        >
                                         <span>{statusOpt.label}</span>
-                                    </Label>
+                                        </Label>
+                                    </FormItem>
                                     ))}
                                 </RadioGroup>
-                                {form.formState.errors.items?.[index]?.status?.message && <FormMessage>{form.formState.errors.items?.[index]?.status?.message}</FormMessage>}
-                                </>
+                                <FormMessage />
+                                </FormItem>
                             )}
                         />
                       </div>
@@ -180,20 +188,22 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
                             control={form.control}
                             name={`items.${index}.notes`}
                             render={({ field: notesField }) => (
-                                <>
-                                <Label htmlFor={`${field.id}-notes`} className="text-sm font-medium mb-1 block">Notas para Reparación</Label>
+                                <FormItem>
+                                <FormLabel htmlFor={`${field.id}-notes`} className="text-sm font-medium mb-1 block">Notas para Reparación</FormLabel>
+                                <FormControl>
                                 <Textarea
                                     id={`${field.id}-notes`}
                                     placeholder="Describe el problema y la reparación necesaria..."
                                     {...notesField}
                                     className="min-h-[60px]"
                                 />
-                                </>
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
                             )}
                             />
                         </div>
                       )}
-                      {/* Lógica para permitir eliminar solo ítems personalizados */}
                       {!defaultChecklistItemsData.some(defaultItem => defaultItem.name === form.getValues(`items.${index}.name`)) && (
                          <div className="col-span-1 md:col-span-3 flex justify-end mt-2">
                             <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)} className="text-destructive hover:text-destructive/80">
@@ -206,7 +216,7 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
                 ))}
               </div>
             </ScrollArea>
-            <div className="mt-6 flex justify-start"> {/* Botón de añadir a la izquierda */}
+            <div className="mt-6 flex justify-start"> 
                 <Button type="button" variant="outline" onClick={handleAddItem}>
                     <PlusCircle className="h-4 w-4 mr-2" /> Añadir Ítem Personalizado
                 </Button>
