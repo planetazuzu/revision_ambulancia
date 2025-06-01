@@ -35,21 +35,95 @@ const mechanicalReviewSchema = z.object({
 type MechanicalReviewFormValues = z.infer<typeof mechanicalReviewSchema>;
 
 const defaultChecklistItemsData: Omit<ChecklistItem, 'id' | 'status' | 'notes'>[] = [
-  { name: 'Frenos (Pastillas, Discos, Líquido)' },
-  { name: 'Neumáticos (Presión, Dibujo, Daños)' },
-  { name: 'Luces (Delanteras, Traseras, Intermitentes, Emergencia)' },
-  { name: 'Motor (Aceite, Refrigerante, Correas, Mangueras)' },
-  { name: 'Sistema de Dirección' },
-  { name: 'Sistema de Suspensión' },
-  { name: 'Batería y Sistema Eléctrico' },
-  { name: 'Sirena y Sistema PA' },
-  { name: 'Soportes de Equipamiento Médico' },
-  { name: 'Cinturones de Seguridad (Todos los asientos)' },
-  { name: 'Fugas de Fluidos (Aceite, Refrigerante, Combustible)' },
-  { name: 'Sistema de Escape' },
-  { name: 'Limpiaparabrisas y Líquido' },
-  { name: 'Espejos (Laterales y Retrovisor)' },
-  { name: 'Herramientas de Emergencia (Gato, Llave)' },
+  // Frenos
+  { name: 'Pastillas de Freno (Delanteras)' },
+  { name: 'Pastillas de Freno (Traseras)' },
+  { name: 'Discos de Freno (Delanteros)' },
+  { name: 'Discos de Freno (Traseros)' },
+  { name: 'Líquido de Frenos (Nivel y Estado)' },
+  { name: 'Latiguillos y Tuberías de Freno' },
+  { name: 'Servofreno (Asistencia de Frenado)' },
+  { name: 'Freno de Estacionamiento' },
+  // Neumáticos
+  { name: 'Presión Neumático Delantero Izquierdo' },
+  { name: 'Presión Neumático Delantero Derecho' },
+  { name: 'Presión Neumático Trasero Izquierdo (Interior si gemela)' },
+  { name: 'Presión Neumático Trasero Derecho (Interior si gemela)' },
+  { name: 'Presión Neumático Trasero Izquierdo (Exterior si gemela)' },
+  { name: 'Presión Neumático Trasero Derecho (Exterior si gemela)' },
+  { name: 'Presión Neumático de Repuesto' },
+  { name: 'Profundidad Dibujo Neumáticos (Todos)' },
+  { name: 'Estado General Neumáticos (Cortes, Deformaciones, Desgaste irregular)' },
+  { name: 'Apriete de Tuercas/Tornillos de Rueda' },
+  // Luces
+  { name: 'Luces de Cruce (Cortas)' },
+  { name: 'Luces de Carretera (Largas)' },
+  { name: 'Luces de Posición (Delanteras)' },
+  { name: 'Luces de Posición (Traseras)' },
+  { name: 'Luces de Freno (Incluida tercera luz)' },
+  { name: 'Intermitentes Delanteros (Izq. y Der.)' },
+  { name: 'Intermitentes Traseros (Izq. y Der.)' },
+  { name: 'Intermitentes Laterales (Izq. y Der.)' },
+  { name: 'Luces de Emergencia (Warning)' },
+  { name: 'Luces de Marcha Atrás' },
+  { name: 'Luz Antiniebla Delantera' },
+  { name: 'Luz Antiniebla Trasera' },
+  { name: 'Luces de Matrícula' },
+  { name: 'Luces Rotativas/Prioritarias Azules' },
+  { name: 'Luces Interiores Cabina Conducción' },
+  { name: 'Luces Interiores Célula Sanitaria (General, Quirófano si aplica)' },
+  // Motor y Compartimento
+  { name: 'Nivel de Aceite Motor' },
+  { name: 'Nivel de Líquido Refrigerante' },
+  { name: 'Estado de Correas (Alternador, Dirección, A/A, etc.)' },
+  { name: 'Estado de Mangueras (Refrigeración, Admisión, Combustible, etc.)' },
+  { name: 'Fugas Visibles en Compartimento Motor (Aceite, Refrigerante, Combustible)' },
+  { name: 'Batería Principal (Estado Bornes, Sujeción, Nivel Electrolito si aplica)' },
+  { name: 'Batería Auxiliar Célula Sanitaria (si aplica)' },
+  // Dirección
+  { name: 'Holgura en la Dirección' },
+  { name: 'Nivel Líquido Dirección Asistida' },
+  { name: 'Guardapolvos de Dirección (Cremallera y Rótulas)' },
+  // Suspensión
+  { name: 'Amortiguadores Delanteros (Fugas, Estado)' },
+  { name: 'Amortiguadores Traseros (Fugas, Estado)' },
+  { name: 'Ballestas/Muelles (Estado, Sujeciones)' },
+  { name: 'Silentblocks y Bujes de Suspensión (Visible)' },
+  // Sistema Eléctrico General
+  { name: 'Funcionamiento Alternador (Testigo Batería al arrancar/apagar)' },
+  { name: 'Estado del Cableado Visible General' },
+  { name: 'Claxon / Bocina' },
+  // Cabina y Carrocería
+  { name: 'Estado Parabrisas y Ventanillas (Fisuras, Impactos)' },
+  { name: 'Funcionamiento Elevalunas Eléctricos' },
+  { name: 'Cierre Centralizado y Cerraduras Puertas' },
+  { name: 'Espejos Retrovisores (Exteriores e Interior)' },
+  { name: 'Limpiaparabrisas (Escobillas y Funcionamiento)' },
+  { name: 'Nivel Líquido Limpiaparabrisas' },
+  { name: 'Estado Chapa y Pintura (Golpes, Óxido significativo)' },
+  // Célula Sanitaria (Aspectos Vehiculares)
+  { name: 'Funcionamiento Puertas Célula (Lateral y Trasera)' },
+  { name: 'Escalón de Acceso (si aplica, estado y funcionamiento)' },
+  { name: 'Anclajes Camilla Principal' },
+  { name: 'Soportes Equipamiento Médico (Fijación)' },
+  { name: 'Cinturones de Seguridad (Todos los asientos, célula y cabina)' },
+  // Fluidos y Niveles Varios
+  { name: 'Fugas de Fluidos Bajo el Vehículo (Revisar tras estacionamiento)' },
+  // Sistema de Escape
+  { name: 'Estado General del Sistema de Escape (Fugas, Corrosión, Sujeción)' },
+  { name: 'Emisión de Humos Anormal (Color, Densidad excesiva)' },
+  // Equipamiento de Emergencia del Vehículo
+  { name: 'Triángulos de Señalización (Cantidad y Estado)' },
+  { name: 'Chaleco Reflectante (Cantidad y Estado)' },
+  { name: 'Extintor (Presión, Caducidad, Sujeción)' },
+  { name: 'Gato y Herramientas para Cambio de Rueda' },
+  { name: 'Botiquín de Primeros Auxilios del Vehículo (si normativo)' },
+  // Específicos Ambulancia
+  { name: 'Sistema de Calefacción/AA Célula Sanitaria' },
+  { name: 'Sistema de Oxígeno Fijo (Manómetros, Fugas en tuberías)' },
+  { name: 'Tomas de Corriente 12V / 220V en Célula (Funcionamiento)' },
+  { name: 'Iluminación de Emergencia Exterior (Focos trabajo, etc.)' },
+  { name: 'Sirena y Sistema PA (Funcionamiento y Tonos)' },
 ];
 
 interface MechanicalReviewFormProps {
@@ -80,7 +154,7 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
     const initialItems = existingReview
       ? existingReview.items.map(item => ({...item, status: item.status as ChecklistItemStatus}))
       : defaultChecklistItemsData.map((item, index) => ({
-          id: `default-${ambulance.id}-${index}-${item.name.replace(/\s+/g, '-').toLowerCase()}`, 
+          id: `default-${ambulance.id}-${index}-${item.name.replace(/\s+/g, '-').toLowerCase().slice(0,30)}`, 
           name: item.name,
           status: 'N/A' as ChecklistItemStatus,
           notes: '',
@@ -232,3 +306,5 @@ export function MechanicalReviewForm({ ambulance }: MechanicalReviewFormProps) {
     </Card>
   );
 }
+
+    
