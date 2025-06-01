@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, PlusCircle, Edit, Trash2, FilterX, Search, Home, ArchiveRestore } from 'lucide-react';
+import { Upload, PlusCircle, Edit, Trash2, FilterX, Search, Home, ArchiveRestore, FileSpreadsheet } from 'lucide-react';
 import type { AmpularioMaterial, MaterialRoute, Space } from '@/types';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -29,11 +29,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext'; // Importar useAuth
+import { useAuth } from '@/contexts/AuthContext'; 
 
 const DEFAULT_SPACE_ID = 'space23'; 
 
-export default function GestionMaterialesPage() { // Renombrado de AmpularioPage
+export default function GestionMaterialesPage() { 
   const { user } = useAuth(); 
   const [materials, setMaterials] = useState<AmpularioMaterial[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -127,20 +127,22 @@ export default function GestionMaterialesPage() { // Renombrado de AmpularioPage
     formData.append('file', file);
 
     try {
-      const response = await fetch('/api/ampulario/import', { // API path remains for now
+      const response = await fetch('/api/ampulario/import', { 
         method: 'POST',
         body: formData,
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.error || 'Falló la importación del CSV. Detalles: ' + (result.details || []).join(', '));
+        throw new Error(result.error || 'Falló la importación del archivo. Detalles: ' + (result.details || []).join(', '));
       }
       toast({ title: "Importación Exitosa", description: `${result.imported} materiales importados.` });
       fetchMaterials(); 
     } catch (error: any) {
       toast({ title: "Error de Importación", description: error.message, variant: "destructive" });
     } finally {
-        event.target.value = ''; 
+        if (event.target.value) { // Check if target.value exists before resetting
+            event.target.value = ''; 
+        }
     }
   };
 
@@ -240,9 +242,9 @@ export default function GestionMaterialesPage() { // Renombrado de AmpularioPage
                               <PlusCircle className="mr-2 h-4 w-4" /> Añadir Material
                           </Button>
                           <Button asChild variant="outline">
-                          <label htmlFor="csv-upload" className="cursor-pointer flex items-center">
-                              <Upload className="mr-2 h-4 w-4" /> Importar CSV
-                              <input id="csv-upload" type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                          <label htmlFor="file-upload" className="cursor-pointer flex items-center">
+                              <Upload className="mr-2 h-4 w-4" /> Importar Archivo
+                              <input id="file-upload" type="file" accept=".csv,.xlsx" onChange={handleFileUpload} className="hidden" />
                           </label>
                           </Button>
                       </div>
