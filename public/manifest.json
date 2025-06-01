@@ -1,31 +1,35 @@
-
 {
-  "name": "Gestión de Material de Ambulancias",
+  "name": "AmbuGestión: Material de Ambulancias",
   "short_name": "AmbuGestión",
-  "description": "Sistema para la Gestión de Material y Revisiones de Ambulancias",
-  "start_url": "/",
+  "description": "Sistema integral para la gestión de material, inventario y revisiones de ambulancias del servicio de emergencias.",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#73C23A",
+  "theme_color": "#70AC2D",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "es-ES",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-maskable-192x192.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-maskable-512x512.png",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
