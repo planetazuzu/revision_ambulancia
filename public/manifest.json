@@ -1,38 +1,27 @@
 {
-  "name": "AmbuGestión: Material de Ambulancias",
+  "name": "Gestión de Material de Ambulancias",
   "short_name": "AmbuGestión",
-  "description": "Sistema integral para la gestión de material, inventario y revisiones de ambulancias del servicio de emergencias.",
-  "start_url": "/dashboard",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#70AC2D",
-  "orientation": "portrait-primary",
-  "scope": "/",
-  "lang": "es-ES",
+  "description": "Sistema para la Gestión de Material y Revisiones de Ambulancias del Gobierno de La Rioja.",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "theme_color": "#6FAA2D",
+  "background_color": "#F0F4F8",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "es-ES",
+  "categories": ["business", "productivity", "medical", "utilities"]
 }
