@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAppData } from "@/contexts/AppDataContext";
 import type { Alert as AppAlert, Space, Ambulance } from "@/types"; // Renamed to avoid conflict with Lucide Alert
 import { format, parseISO } from "date-fns";
-import { AlertTriangle, Wrench, ShieldAlert, Info, ArchiveBox, PackageWarning, Sparkles } from "lucide-react";
+import { AlertTriangle, Wrench, ShieldAlert, Info, Archive, ArchiveAlert, Sparkles, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,12 +17,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { es } from 'date-fns/locale';
 
 export default function AlertsPage() {
-  const { alerts: contextAlerts, getAmbulanceById: getAnyAmbulanceById } = useAppData(); 
+  const { alerts: contextAlerts, getAmbulanceById: getAnyAmbulanceById, getNotificationEmailConfig } = useAppData(); 
   const { user, loading: authLoading } = useAuth();
-  const [apiAlerts, setApiAlerts] = useState<AppAlert[]>([]); // Renamed from ampularioAlerts
+  const [apiAlerts, setApiAlerts] = useState<AppAlert[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [allAlerts, setAllAlerts] = useState<AppAlert[]>([]);
-  const [isLoadingApiAlerts, setIsLoadingApiAlerts] = useState(true); // Renamed
+  const [isLoadingApiAlerts, setIsLoadingApiAlerts] = useState(true);
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
   const { toast } = useToast();
 
@@ -30,6 +30,11 @@ export default function AlertsPage() {
     const fetchSpacesAndApiAlerts = async () => {
       setIsLoadingSpaces(true);
       setIsLoadingApiAlerts(true);
+      let configuredEmail: string | null = null;
+      if (user?.role === 'coordinador') {
+        configuredEmail = getNotificationEmailConfig();
+      }
+
       try {
         const spacesResponse = await fetch('/api/spaces');
         if (!spacesResponse.ok) throw new Error('No se pudieron cargar los espacios');
@@ -42,12 +47,25 @@ export default function AlertsPage() {
       }
 
       try {
-        // The API path /api/ampulario/alerts remains the same for now
         const alertsResponse = await fetch('/api/ampulario/alerts'); 
         if (!alertsResponse.ok) throw new Error('No se pudieron cargar las alertas del inventario central');
-        let alertsData: AppAlert[] = await alertsResponse.json();
+        let fetchedApiAlerts: AppAlert[] = await alertsResponse.json();
         
-        setApiAlerts(alertsData);
+        setApiAlerts(fetchedApiAlerts);
+
+        if (configuredEmail) {
+          fetchedApiAlerts.forEach(alert => {
+            if (alert.severity === 'high') {
+              toast({
+                title: "ALERTA CRÍTICA (Inventario Central)",
+                description: `${alert.message} Notificación simulada a ${configuredEmail}.`,
+                variant: "destructive",
+                duration: 10000
+              });
+            }
+          });
+        }
+
       } catch (error: any) {
         toast({ title: "Error", description: `No se pudieron cargar las alertas del inventario central: ${error.message}`, variant: "destructive" });
       } finally {
@@ -57,7 +75,8 @@ export default function AlertsPage() {
     if (!authLoading) {
         fetchSpacesAndApiAlerts();
     }
-  }, [toast, authLoading, user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast, authLoading, user]); // getNotificationEmailConfig removed as it's called conditionally inside
 
   useEffect(() => {
     const combinedAlerts = [...contextAlerts, ...apiAlerts];
@@ -82,8 +101,9 @@ export default function AlertsPage() {
       case 'cleaning_pending': return <Sparkles className={`h-5 w-5 ${colorClass}`} />;
       case 'expiring_soon': return <ShieldAlert className={`h-5 w-5 ${colorClass}`} />;
       case 'expired_material': return <AlertTriangle className={`h-5 w-5 ${colorClass}`} />;
-      case 'ampulario_expiring_soon': return <PackageWarning className={`h-5 w-5 ${colorClass}`} />; // type name in DB remains
-      case 'ampulario_expired_material': return <ArchiveBox className={`h-5 w-5 ${colorClass}`} />; // type name in DB remains
+      case 'ampulario_expiring_soon': return <ArchiveAlert className={`h-5 w-5 ${colorClass}`} />;
+      case 'ampulario_expired_material': return <Archive className={`h-5 w-5 ${colorClass}`} />;
+      case 'daily_check_pending': return <ClipboardCheck className={`h-5 w-5 ${colorClass}`} />;
       default: return <Info className={`h-5 w-5 ${colorClass}`} />;
     }
   };
@@ -145,6 +165,13 @@ export default function AlertsPage() {
                                             ? space.name 
                                             : (alert.spaceId ? `Espacio ID: ${alert.spaceId}` : 'Sistema'));
                     
+                    let actionLink = `/dashboard/ambulances/${alert.ambulanceId}/review`; // Default link
+                    if (alert.type === 'daily_check_pending' && alert.ambulanceId) {
+                        actionLink = `/dashboard/ambulances/${alert.ambulanceId}/daily-check`;
+                    } else if (alert.type.startsWith('ampulario_') && alert.spaceId) {
+                        actionLink = `/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`;
+                    }
+
                     return (
                       <TableRow key={alert.id} className={alert.severity === 'high' ? 'bg-destructive/5 hover:bg-destructive/10' : (alert.severity === 'medium' ? 'bg-orange-500/5 hover:bg-orange-500/10' : '')}>
                         <TableCell>{getIconForAlertType(alert.type, alert.severity)}</TableCell>
@@ -160,17 +187,13 @@ export default function AlertsPage() {
                         </TableCell>
                         <TableCell>{format(parseISO(alert.createdAt), 'PPP', {locale: es})}</TableCell>
                         <TableCell className="text-right">
-                          {alert.ambulanceId && (
+                          {(alert.ambulanceId || alert.type.startsWith('ampulario_')) && (
                             <Button variant="outline" size="sm" asChild>
-                              <Link href={`/dashboard/ambulances/${alert.ambulanceId}/review`}>Ver Ambulancia</Link>
+                              <Link href={actionLink}>
+                                {alert.type.startsWith('ampulario_') ? "Ver Materiales" : "Ver Ambulancia"}
+                              </Link>
                             </Button>
                           )}
-                           {alert.type.startsWith('ampulario_') && alert.spaceId && ( // type name in DB remains
-                             <Button variant="outline" size="sm" asChild>
-                              {/* The target URL /dashboard/ampulario remains the same */}
-                              <Link href={`/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`}>Ver Materiales</Link>
-                            </Button>
-                           )}
                         </TableCell>
                       </TableRow>
                     );

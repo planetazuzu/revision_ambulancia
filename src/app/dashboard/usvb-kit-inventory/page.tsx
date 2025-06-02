@@ -191,7 +191,8 @@ export default function USVBKitInventoryPage() {
         setSelectedKit(null);
       }
     }
-  }, [operationalKitsData, selectedKit, isKitDetailOpen, getConfigurableUsvbKits]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operationalKitsData, selectedKit?.id, isKitDetailOpen, getConfigurableUsvbKits]);
 
 
   const KitCard = ({ kit }: { kit: typeof filteredKits[0] }) => {
@@ -319,7 +320,7 @@ export default function USVBKitInventoryPage() {
                  <Image
                     src={`https://placehold.co/600x300.png?text=${encodeURIComponent(selectedKit.name)}`}
                     alt={`Imagen genérica para ${selectedKit.name}`}
-                    layout="fill"
+                    fill
                     objectFit="cover"
                     data-ai-hint={selectedKit.genericImageHint || "medical equipment"}
                   />
