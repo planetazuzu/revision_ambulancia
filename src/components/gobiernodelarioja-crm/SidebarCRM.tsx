@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import RiojaLogoPlaceholder from './RiojaLogoPlaceholder';
 import { cn } from '@/lib/utils';
-import React, { useState }import 'pathname';
+import React, { useState } from 'react';
+import 'pathname';
 
 const navItems = [
   { href: '/gobiernodelarioja-crm/dashboard', label: 'Dashboard', icon: Home },
