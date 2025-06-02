@@ -1,10 +1,10 @@
 
 "use client";
 
-import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial } from '@/types';
+import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial, InventoryLogEntry, InventoryLogAction } from '@/types';
 import { ambulanceStorageLocations } from '@/types'; // Importar la lista
 import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo, useCallback } from 'react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale'; 
 import { useAuth } from './AuthContext';
 
@@ -329,7 +329,7 @@ interface AppDataContextType {
   deleteNonConsumableMaterial: (id: string) => void;
 
   alerts: Alert[];
-  generateAlerts: () => void;
+  generateAlerts: () => void; // Now takes an optional email for simulation
 
   updateAmbulanceWorkflowStep: (ambulanceId: string, step: 'mechanical' | 'cleaning' | 'inventory', status: boolean) => void;
   getAllAmbulancesCount: () => number;
@@ -344,6 +344,13 @@ interface AppDataContextType {
   usvbKits: USVBKit[];
   getUSVBKitById: (kitId: string) => USVBKit | undefined;
   updateUSVBKitMaterialQuantity: (kitId: string, materialId: string, newQuantity: number) => void;
+
+  inventoryLogs: InventoryLogEntry[];
+  getInventoryLogsByAmbulanceId: (ambulanceId: string) => InventoryLogEntry[];
+
+  // Notification Email Config
+  getNotificationEmailConfig: () => string | null;
+  setNotificationEmailConfig: (email: string | null) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -390,6 +397,8 @@ const initialNonConsumables: NonConsumableMaterial[] = [
 ];
 
 
+const NOTIFICATION_EMAIL_STORAGE_KEY = 'ambuReviewNotificationEmail';
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
 
@@ -401,6 +410,37 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [revisionesDiariasVehiculo, setRevisionesDiariasVehiculo] = useState<RevisionDiariaVehiculo[]>([]);
   const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>(processedUSVBKits); 
+  const [inventoryLogs, setInventoryLogs] = useState<InventoryLogEntry[]>([]);
+  const [notificationEmailConfig, setNotificationEmailConfigState] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Cargar email de notificación desde localStorage al inicio
+    if (typeof window !== 'undefined') {
+      const storedEmail = localStorage.getItem(NOTIFICATION_EMAIL_STORAGE_KEY);
+      if (storedEmail) {
+        setNotificationEmailConfigState(storedEmail);
+      }
+    }
+  }, []);
+
+  const getNotificationEmailConfig = useCallback(() => {
+    if (user?.role === 'coordinador') {
+      return notificationEmailConfig;
+    }
+    return null; // Solo los coordinadores pueden ver/usar el email configurado
+  }, [user, notificationEmailConfig]);
+
+  const setNotificationEmailConfig = useCallback((email: string | null) => {
+    if (user?.role === 'coordinador') {
+      if (email) {
+        localStorage.setItem(NOTIFICATION_EMAIL_STORAGE_KEY, email);
+        setNotificationEmailConfigState(email);
+      } else {
+        localStorage.removeItem(NOTIFICATION_EMAIL_STORAGE_KEY);
+        setNotificationEmailConfigState(null);
+      }
+    }
+  }, [user]);
 
 
   const accessibleAmbulances = useMemo(() => {
@@ -433,6 +473,43 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
   
   const getAllAmbulancesCount = () => allAmbulancesData.length;
+
+  const addInventoryLogEntry = useCallback((
+    ambulanceId: string,
+    materialId: string,
+    materialName: string,
+    materialType: 'consumable' | 'non-consumable',
+    action: InventoryLogAction,
+    changeDetails: string,
+    quantityBefore?: number,
+    quantityAfter?: number,
+    statusBefore?: string,
+    statusAfter?: string
+  ) => {
+    if (!user) return;
+    const newLog: InventoryLogEntry = {
+      id: `invlog-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      ambulanceId,
+      materialId,
+      materialName,
+      materialType,
+      action,
+      changeDetails,
+      quantityBefore,
+      quantityAfter,
+      statusBefore,
+      statusAfter,
+      userId: user.id,
+      userName: user.name,
+      timestamp: new Date().toISOString(),
+    };
+    setInventoryLogs(prev => [newLog, ...prev]);
+  }, [user]);
+
+  const getInventoryLogsByAmbulanceId = useCallback((ambulanceId: string) => {
+    return inventoryLogs.filter(log => log.ambulanceId === ambulanceId).sort((a, b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime());
+  }, [inventoryLogs]);
+
 
   const addAmbulance = (ambulanceData: Omit<Ambulance, 'id' | 'mechanicalReviewCompleted' | 'cleaningCompleted' | 'inventoryCompleted'>) => {
     if (user?.role !== 'coordinador') {
@@ -482,6 +559,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setConsumableMaterials(prev => prev.filter(cm => cm.ambulanceId !== id));
     setNonConsumableMaterials(prev => prev.filter(ncm => ncm.ambulanceId !== id));
     setRevisionesDiariasVehiculo(prev => prev.filter(dvc => dvc.ambulanceId !== id));
+    setInventoryLogs(prev => prev.filter(log => log.ambulanceId !== id));
   };
 
   const getMechanicalReviewByAmbulanceId = (ambulanceId: string) => {
@@ -541,15 +619,58 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
        console.warn("Intento no autorizado de añadir material consumible.");
        return;
     }
-    const newMaterial: ConsumableMaterial = { ...materialData, id: `cons-${Date.now()}` };
+    const newMaterial: ConsumableMaterial = { ...materialData, id: `cons-${Date.now()}-${Math.random().toString(16).slice(2)}` };
     setConsumableMaterials(prev => [...prev, newMaterial]);
+    addInventoryLogEntry(
+      materialData.ambulanceId,
+      newMaterial.id,
+      materialData.name,
+      'consumable',
+      'added',
+      `Añadido con ${materialData.quantity} unidades. Caducidad: ${format(parseISO(materialData.expiryDate), 'PPP', {locale: es})}. Ubicación: ${materialData.storageLocation || 'N/D'}.`,
+      undefined,
+      materialData.quantity
+    );
   };
   const updateConsumableMaterial = (updatedMaterial: ConsumableMaterial) => {
      if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedMaterial.ambulanceId)) {
        console.warn("Intento no autorizado de actualizar material consumible.");
        return;
     }
+    const originalMaterial = consumableMaterials.find(m => m.id === updatedMaterial.id);
+    if (!originalMaterial) return;
+
     setConsumableMaterials(prev => prev.map(m => m.id === updatedMaterial.id ? updatedMaterial : m));
+    
+    let detailsArray: string[] = [];
+    if (originalMaterial.quantity !== updatedMaterial.quantity) {
+      detailsArray.push(`Cantidad: ${originalMaterial.quantity} -> ${updatedMaterial.quantity}`);
+    }
+    if (originalMaterial.expiryDate !== updatedMaterial.expiryDate) {
+      detailsArray.push(`Caducidad: ${format(parseISO(originalMaterial.expiryDate), 'PPP', {locale: es})} -> ${format(parseISO(updatedMaterial.expiryDate), 'PPP', {locale: es})}`);
+    }
+    if (originalMaterial.name !== updatedMaterial.name) {
+      detailsArray.push(`Nombre: "${originalMaterial.name}" -> "${updatedMaterial.name}"`);
+    }
+    if (originalMaterial.reference !== updatedMaterial.reference) {
+      detailsArray.push(`Referencia: "${originalMaterial.reference}" -> "${updatedMaterial.reference}"`);
+    }
+    if (originalMaterial.storageLocation !== updatedMaterial.storageLocation) {
+      detailsArray.push(`Ubicación: "${originalMaterial.storageLocation || 'N/D'}" -> "${updatedMaterial.storageLocation || 'N/D'}"`);
+    }
+
+    if (detailsArray.length > 0) {
+        addInventoryLogEntry(
+        updatedMaterial.ambulanceId,
+        updatedMaterial.id,
+        updatedMaterial.name,
+        'consumable',
+        'updated',
+        detailsArray.join('; '),
+        originalMaterial.quantity,
+        updatedMaterial.quantity
+        );
+    }
   };
   const deleteConsumableMaterial = (id: string) => {
     const materialToDelete = consumableMaterials.find(m => m.id === id);
@@ -559,6 +680,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
        return;
     }
     setConsumableMaterials(prev => prev.filter(m => m.id !== id));
+    addInventoryLogEntry(
+      materialToDelete.ambulanceId,
+      materialToDelete.id,
+      materialToDelete.name,
+      'consumable',
+      'deleted',
+      `Eliminado. Tenía ${materialToDelete.quantity} unidades. Caducidad: ${format(parseISO(materialToDelete.expiryDate), 'PPP', {locale: es})}. Ubicación: ${materialToDelete.storageLocation || 'N/D'}.`,
+      materialToDelete.quantity,
+      0
+    );
   };
 
 
@@ -573,15 +704,53 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
        console.warn("Intento no autorizado de añadir material no consumible.");
        return;
     }
-    const newMaterial: NonConsumableMaterial = { ...materialData, id: `noncons-${Date.now()}` };
+    const newMaterial: NonConsumableMaterial = { ...materialData, id: `noncons-${Date.now()}-${Math.random().toString(16).slice(2)}` };
     setNonConsumableMaterials(prev => [...prev, newMaterial]);
+    addInventoryLogEntry(
+      materialData.ambulanceId,
+      newMaterial.id,
+      materialData.name,
+      'non-consumable',
+      'added',
+      `Añadido. Estado: ${materialData.status}. N/S: ${materialData.serialNumber}. Ubicación: ${materialData.storageLocation || 'N/D'}.`,
+      undefined, undefined, undefined, materialData.status
+    );
   };
   const updateNonConsumableMaterial = (updatedMaterial: NonConsumableMaterial) => {
     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== updatedMaterial.ambulanceId)) {
        console.warn("Intento no autorizado de actualizar material no consumible.");
        return;
     }
+    const originalMaterial = nonConsumableMaterials.find(m => m.id === updatedMaterial.id);
+    if (!originalMaterial) return;
+
     setNonConsumableMaterials(prev => prev.map(m => m.id === updatedMaterial.id ? updatedMaterial : m));
+    
+    let detailsArray: string[] = [];
+    if (originalMaterial.status !== updatedMaterial.status) {
+      detailsArray.push(`Estado: ${originalMaterial.status} -> ${updatedMaterial.status}`);
+    }
+    if (originalMaterial.name !== updatedMaterial.name) {
+      detailsArray.push(`Nombre: "${originalMaterial.name}" -> "${updatedMaterial.name}"`);
+    }
+     if (originalMaterial.serialNumber !== updatedMaterial.serialNumber) {
+      detailsArray.push(`N/S: "${originalMaterial.serialNumber}" -> "${updatedMaterial.serialNumber}"`);
+    }
+    if (originalMaterial.storageLocation !== updatedMaterial.storageLocation) {
+      detailsArray.push(`Ubicación: "${originalMaterial.storageLocation || 'N/D'}" -> "${updatedMaterial.storageLocation || 'N/D'}"`);
+    }
+    
+    if (detailsArray.length > 0) {
+        addInventoryLogEntry(
+        updatedMaterial.ambulanceId,
+        updatedMaterial.id,
+        updatedMaterial.name,
+        'non-consumable',
+        'updated',
+        detailsArray.join('; '),
+        undefined, undefined, originalMaterial.status, updatedMaterial.status
+        );
+    }
   };
   const deleteNonConsumableMaterial = (id: string) => {
     const materialToDelete = nonConsumableMaterials.find(m => m.id === id);
@@ -591,6 +760,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
        return;
     }
     setNonConsumableMaterials(prev => prev.filter(m => m.id !== id));
+    addInventoryLogEntry(
+      materialToDelete.ambulanceId,
+      materialToDelete.id,
+      materialToDelete.name,
+      'non-consumable',
+      'deleted',
+      `Eliminado. Estado: ${materialToDelete.status}. N/S: ${materialToDelete.serialNumber}. Ubicación: ${materialToDelete.storageLocation || 'N/D'}.`,
+      undefined, undefined, materialToDelete.status, undefined
+    );
   };
 
   const updateAmbulanceWorkflowStep = (ambulanceId: string, step: 'mechanical' | 'cleaning' | 'inventory', status: boolean) => {
@@ -776,6 +954,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     revisionesDiariasVehiculo, getRevisionDiariaVehiculoByAmbulanceId, saveRevisionDiariaVehiculo,
     getAmbulanceStorageLocations,
     usvbKits: usvbKitsData, getUSVBKitById, updateUSVBKitMaterialQuantity,
+    inventoryLogs, getInventoryLogsByAmbulanceId,
+    getNotificationEmailConfig, setNotificationEmailConfig,
   };
 
   return (

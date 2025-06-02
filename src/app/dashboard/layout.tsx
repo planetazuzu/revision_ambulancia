@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { mainNavItems } from '@/config/navigation';
+import type { NavItem } from '@/config/navigation';
 import { Header } from '@/components/layout/Header';
 import { Ambulance, LogOut } from 'lucide-react';
 import {
@@ -60,6 +61,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     );
   }
 
+  const filteredNavItems = mainNavItems.filter(item => {
+    if (item.adminOnly && user?.role !== 'coordinador') {
+      return false;
+    }
+    return true;
+  });
+
 
   const NavContent = () => {
     const { open } = useSidebar();
@@ -78,7 +86,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
         <SidebarContent className="p-0">
             <SidebarMenu className="space-y-1 p-2">
-            {mainNavItems.map((item) => (
+            {filteredNavItems.map((item: NavItem) => (
                 <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                     asChild

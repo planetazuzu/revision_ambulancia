@@ -8,6 +8,7 @@ export interface NavItem {
   icon: LucideIcon;
   disabled?: boolean;
   isExternal?: boolean;
+  adminOnly?: boolean; // Renamed from coordinatorOnly for clarity if roles expand
 }
 
 export const mainNavItems: NavItem[] = [
@@ -16,6 +17,7 @@ export const mainNavItems: NavItem[] = [
   { href: '/dashboard/gestion-materiales', label: 'Gestión de Materiales', icon: Archive }, // Ruta de archivo no cambia
   { href: '/dashboard/usvb-kit-inventory', label: 'Dotación USVB', icon: PackageSearch },
   { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
+  { href: '/dashboard/settings', label: 'Configuración', icon: Settings, adminOnly: true },
 ];
 
 export const userNavItems: NavItem[] = [
