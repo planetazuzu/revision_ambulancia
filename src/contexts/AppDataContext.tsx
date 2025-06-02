@@ -842,12 +842,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
 
-  const getConsumableMaterialsByAmbulanceId = (ambulanceId: string) => {
+  const getConsumableMaterialsByAmbulanceId = useCallback((ambulanceId: string) => {
     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
       return [];
     }
     return consumableMaterials.filter(m => m.ambulanceId === ambulanceId);
-  }
+  }, [user, consumableMaterials]);
+
   const addConsumableMaterial = (materialData: Omit<ConsumableMaterial, 'id'>) => {
     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialData.ambulanceId)) {
        console.warn("Intento no autorizado de añadir material consumible.");
@@ -931,12 +932,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   };
 
 
-  const getNonConsumableMaterialsByAmbulanceId = (ambulanceId: string) => {
+  const getNonConsumableMaterialsByAmbulanceId = useCallback((ambulanceId: string) => {
     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
       return [];
     }
     return nonConsumableMaterials.filter(m => m.ambulanceId === ambulanceId);
-  }
+  }, [user, nonConsumableMaterials]);
+
   const addNonConsumableMaterial = (materialData: Omit<NonConsumableMaterial, 'id'>) => {
      if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== materialData.ambulanceId)) {
        console.warn("Intento no autorizado de añadir material no consumible.");
