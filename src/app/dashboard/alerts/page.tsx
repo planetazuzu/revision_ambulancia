@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAppData } from "@/contexts/AppDataContext";
 import type { Alert as AppAlert, Space, Ambulance } from "@/types"; // Renamed to avoid conflict with Lucide Alert
 import { format, parseISO } from "date-fns";
-import { AlertTriangle, Wrench, ShieldAlert, Info, Archive, ArchiveAlert, Sparkles, ClipboardCheck } from "lucide-react";
+import { AlertTriangle, Wrench, ShieldAlert, Info, Archive, Sparkles, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -101,8 +101,8 @@ export default function AlertsPage() {
       case 'cleaning_pending': return <Sparkles className={`h-5 w-5 ${colorClass}`} />;
       case 'expiring_soon': return <ShieldAlert className={`h-5 w-5 ${colorClass}`} />;
       case 'expired_material': return <AlertTriangle className={`h-5 w-5 ${colorClass}`} />;
-      case 'ampulario_expiring_soon': return <ArchiveAlert className={`h-5 w-5 ${colorClass}`} />;
-      case 'ampulario_expired_material': return <Archive className={`h-5 w-5 ${colorClass}`} />;
+      case 'ampulario_expiring_soon': return <Archive className={`h-5 w-5 ${colorClass}`} />; 
+      case 'ampulario_expired_material': return <Archive className={`h-5 w-5 ${colorClass}`} />; 
       case 'daily_check_pending': return <ClipboardCheck className={`h-5 w-5 ${colorClass}`} />;
       default: return <Info className={`h-5 w-5 ${colorClass}`} />;
     }
