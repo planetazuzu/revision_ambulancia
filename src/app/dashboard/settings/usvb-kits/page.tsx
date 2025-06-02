@@ -304,7 +304,7 @@ export default function ManageUsvbKitsPage() {
                   <FormItem>
                     <FormLabel>Pista para Imagen Genérica (data-ai-hint)</FormLabel>
                     <FormControl><Input placeholder="Ej: pediatric supplies, ppe kit" {...field} /></FormControl>
-                    <FormDescription>Una o dos palabras clave para buscar una imagen si no hay una específica.</FormDescription>
+                    <CardDescription>Una o dos palabras clave para buscar una imagen si no hay una específica.</CardDescription>
                     <FormMessage />
                   </FormItem>
                 )}
