@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,20 +14,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import type { Ambulance, RevisionDiariaVehiculo, FuelLevel, TyrePressureStatus, SimplePresenceStatus, EquipmentStatus, YesNoStatus } from '@/types';
+import type { Ambulance, RevisionDiariaVehiculo, FuelLevel, TyrePressureStatus, SimplePresenceStatus, EquipmentStatus, YesNoStatus, ExteriorCornerCheck } from '@/types';
 import { useAppData } from '@/contexts/AppDataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CalendarIcon, Camera, Save } from 'lucide-react';
+import { CalendarIcon, Camera, Save, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 const exteriorCornerCheckSchema = z.object({
   notes: z.string().optional(),
-  photoTaken: z.boolean().optional().default(false),
+  photoUrl: z.string().url().optional().nullable(), // Ahora es una URL (o Data URL)
 });
 
 const revisionDiariaVehiculoSchema = z.object({
@@ -55,6 +56,8 @@ const revisionDiariaVehiculoSchema = z.object({
 });
 
 type RevisionDiariaVehiculoFormValues = z.infer<typeof revisionDiariaVehiculoSchema>;
+type CornerName = keyof Pick<RevisionDiariaVehiculoFormValues, 'exteriorFrontRight' | 'exteriorFrontLeft' | 'exteriorRearRight' | 'exteriorRearLeft'>;
+
 
 const fuelLevelOptions: { value: FuelLevel; label: string }[] = [
   { value: 'Lleno', label: 'Lleno' }, { value: '3/4', label: '3/4' }, { value: '1/2', label: '1/2' },
@@ -83,6 +86,9 @@ export function RevisionDiariaVehiculoForm({ ambulance }: RevisionDiariaVehiculo
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [currentCornerForPhoto, setCurrentCornerForPhoto] = useState<CornerName | null>(null);
+
 
   const existingCheck = useMemo(() => getRevisionDiariaVehiculoByAmbulanceId(ambulance.id), [getRevisionDiariaVehiculoByAmbulanceId, ambulance.id]);
 
@@ -95,10 +101,10 @@ export function RevisionDiariaVehiculoForm({ ambulance }: RevisionDiariaVehiculo
       ambulanceNumber: ambulance.name,
       paxBagNumber: '',
       paxFolderPresent: 'No',
-      exteriorFrontRight: { notes: '', photoTaken: false },
-      exteriorFrontLeft: { notes: '', photoTaken: false },
-      exteriorRearRight: { notes: '', photoTaken: false },
-      exteriorRearLeft: { notes: '', photoTaken: false },
+      exteriorFrontRight: { notes: '', photoUrl: null },
+      exteriorFrontLeft: { notes: '', photoUrl: null },
+      exteriorRearRight: { notes: '', photoUrl: null },
+      exteriorRearLeft: { notes: '', photoUrl: null },
       fuelLevel: 'Lleno',
       tyrePressureStatus: 'OK',
       ambulanceRegistrationPresent: 'Presente',
@@ -112,23 +118,28 @@ export function RevisionDiariaVehiculoForm({ ambulance }: RevisionDiariaVehiculo
 
   useEffect(() => {
     if (existingCheck) {
+      const castedCheck = existingCheck as unknown as RevisionDiariaVehiculoFormValues;
       form.reset({
-        ...existingCheck,
+        ...castedCheck,
         checkDate: parseISO(existingCheck.checkDate),
-        ambulanceNumber: ambulance.name, // Ensure ambulanceNumber is always current
+        ambulanceNumber: ambulance.name,
+        exteriorFrontRight: { notes: existingCheck.exteriorFrontRight.notes, photoUrl: existingCheck.exteriorFrontRight.photoUrl },
+        exteriorFrontLeft: { notes: existingCheck.exteriorFrontLeft.notes, photoUrl: existingCheck.exteriorFrontLeft.photoUrl },
+        exteriorRearRight: { notes: existingCheck.exteriorRearRight.notes, photoUrl: existingCheck.exteriorRearRight.photoUrl },
+        exteriorRearLeft: { notes: existingCheck.exteriorRearLeft.notes, photoUrl: existingCheck.exteriorRearLeft.photoUrl },
       });
     } else {
-        form.reset({ // Reset to defaults if no existing check for a new form instance
+        form.reset({ 
             driverFirstName: user?.name?.split(' ')[0] || '',
             driverLastName: user?.name?.split(' ').slice(1).join(' ') || '',
             checkDate: new Date(),
             ambulanceNumber: ambulance.name,
             paxBagNumber: '',
             paxFolderPresent: 'No',
-            exteriorFrontRight: { notes: '', photoTaken: false },
-            exteriorFrontLeft: { notes: '', photoTaken: false },
-            exteriorRearRight: { notes: '', photoTaken: false },
-            exteriorRearLeft: { notes: '', photoTaken: false },
+            exteriorFrontRight: { notes: '', photoUrl: null },
+            exteriorFrontLeft: { notes: '', photoUrl: null },
+            exteriorRearRight: { notes: '', photoUrl: null },
+            exteriorRearLeft: { notes: '', photoUrl: null },
             fuelLevel: 'Lleno',
             tyrePressureStatus: 'OK',
             ambulanceRegistrationPresent: 'Presente',
@@ -149,21 +160,57 @@ export function RevisionDiariaVehiculoForm({ ambulance }: RevisionDiariaVehiculo
     const checkDataToSave: Omit<RevisionDiariaVehiculo, 'id' | 'submittedByUserId'> = {
       ...data,
       ambulanceId: ambulance.id,
-      checkDate: format(data.checkDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), // Ensure ISO format
+      checkDate: format(data.checkDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), 
+      exteriorFrontRight: { notes: data.exteriorFrontRight.notes, photoUrl: data.exteriorFrontRight.photoUrl || undefined },
+      exteriorFrontLeft: { notes: data.exteriorFrontLeft.notes, photoUrl: data.exteriorFrontLeft.photoUrl || undefined },
+      exteriorRearRight: { notes: data.exteriorRearRight.notes, photoUrl: data.exteriorRearRight.photoUrl || undefined },
+      exteriorRearLeft: { notes: data.exteriorRearLeft.notes, photoUrl: data.exteriorRearLeft.photoUrl || undefined },
     };
     
     saveRevisionDiariaVehiculo({ ...checkDataToSave, submittedByUserId: user.id });
     toast({ title: "Revisión Guardada", description: `La revisión diaria para ${ambulance.name} ha sido guardada.` });
-    // Potentially navigate or give feedback
-    // router.push(`/dashboard/ambulances/${ambulance.id}`); // Example navigation
   };
   
-  const handleTakePhoto = (corner: keyof Pick<RevisionDiariaVehiculoFormValues, 'exteriorFrontRight' | 'exteriorFrontLeft' | 'exteriorRearRight' | 'exteriorRearLeft'>) => {
-    // Placeholder for camera functionality
-    console.log(`Tomar foto para ${corner}`);
-    form.setValue(`${corner}.photoTaken`, true); // Simulate photo taken
-    toast({ title: "Función no implementada", description: `La toma de fotos para ${corner} es un placeholder.`});
+  const handleTakePhotoClick = (corner: CornerName) => {
+    setCurrentCornerForPhoto(corner);
+    fileInputRef.current?.click();
   };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!currentCornerForPhoto) return;
+
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          form.setValue(`${currentCornerForPhoto}.photoUrl`, reader.result as string);
+          toast({ title: "Foto Seleccionada", description: `Imagen para ${currentCornerForPhoto} cargada.` });
+        };
+        reader.onerror = () => {
+          toast({ title: "Error al leer archivo", description: "No se pudo cargar la imagen.", variant: "destructive" });
+        };
+        reader.readAsDataURL(file);
+      } else {
+        toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo de imagen.", variant: "destructive" });
+      }
+    }
+    setCurrentCornerForPhoto(null); 
+    if (event.target) event.target.value = ""; 
+  };
+
+  const handleDeletePhoto = (corner: CornerName) => {
+    form.setValue(`${corner}.photoUrl`, null);
+    toast({ title: "Foto Eliminada", description: `Imagen para ${corner} eliminada.` });
+  };
+
+
+  const cornerFields: { name: CornerName; label: string }[] = [
+    { name: 'exteriorFrontRight', label: 'Esquina Delantera Derecha' },
+    { name: 'exteriorFrontLeft', label: 'Esquina Delantera Izquierda' },
+    { name: 'exteriorRearRight', label: 'Esquina Trasera Derecha' },
+    { name: 'exteriorRearLeft', label: 'Esquina Trasera Izquierda' },
+  ];
 
 
   return (
@@ -175,6 +222,13 @@ export function RevisionDiariaVehiculoForm({ ambulance }: RevisionDiariaVehiculo
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
+            <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+            />
             <ScrollArea className="h-[calc(100vh-22rem)] md:h-[calc(100vh-20rem)] pr-4">
               <div className="space-y-6">
 
@@ -248,30 +302,43 @@ export function RevisionDiariaVehiculoForm({ ambulance }: RevisionDiariaVehiculo
 
                 <section className="space-y-4 p-4 border rounded-md">
                   <h3 className="text-lg font-semibold mb-3">Condiciones del Exterior de la Ambulancia</h3>
-                  {(['exteriorFrontRight', 'exteriorFrontLeft', 'exteriorRearRight', 'exteriorRearLeft'] as const).map((corner, idx) => {
-                    const labels: Record<typeof corner, string> = {
-                        exteriorFrontRight: 'Esquina Delantera Derecha',
-                        exteriorFrontLeft: 'Esquina Delantera Izquierda',
-                        exteriorRearRight: 'Esquina Trasera Derecha',
-                        exteriorRearLeft: 'Esquina Trasera Izquierda',
-                    };
+                  {cornerFields.map((cornerItem) => {
+                    const photoUrl = form.watch(`${cornerItem.name}.photoUrl`);
                     return (
-                        <div key={corner} className="p-3 border rounded bg-muted/20 space-y-2">
-                            <Label className="font-medium">{labels[corner]}</Label>
-                            <FormField control={form.control} name={`${corner}.notes`} render={({ field }) => (
+                        <div key={cornerItem.name} className="p-3 border rounded bg-muted/20 space-y-2">
+                            <Label className="font-medium">{cornerItem.label}</Label>
+                            <FormField control={form.control} name={`${cornerItem.name}.notes`} render={({ field }) => (
                             <FormItem>
-                                <FormLabel htmlFor={`${corner}-notes`} className="sr-only">Notas {labels[corner]}</FormLabel>
+                                <FormLabel htmlFor={`${cornerItem.name}-notes`} className="sr-only">Notas {cornerItem.label}</FormLabel>
                                 <FormControl>
-                                <Textarea id={`${corner}-notes`} placeholder="Anotaciones sobre esta esquina..." {...field} className="min-h-[50px]" />
+                                <Textarea id={`${cornerItem.name}-notes`} placeholder="Anotaciones sobre esta esquina..." {...field} className="min-h-[50px]" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                             )} />
-                            <Button type="button" variant="outline" size="sm" onClick={() => handleTakePhoto(corner)} disabled={form.watch(`${corner}.photoTaken`)}>
-                                <Camera className="mr-2 h-4 w-4" />
-                                {form.watch(`${corner}.photoTaken`) ? 'Foto Tomada' : 'Tomar Foto'}
-                            </Button>
-                             {form.watch(`${corner}.photoTaken`) && <span className="text-xs text-green-600 ml-2">(Foto registrada)</span>}
+                            <div className="flex items-center gap-2">
+                                <Button type="button" variant="outline" size="sm" onClick={() => handleTakePhotoClick(cornerItem.name)}>
+                                    <Camera className="mr-2 h-4 w-4" />
+                                    {photoUrl ? 'Cambiar Foto' : 'Tomar Foto'}
+                                </Button>
+                                {photoUrl && (
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => handleDeletePhoto(cornerItem.name)} className="text-destructive hover:text-destructive/80">
+                                        <Trash2 className="mr-1 h-4 w-4" /> Eliminar Foto
+                                    </Button>
+                                )}
+                            </div>
+                             {photoUrl && (
+                                <div className="mt-2">
+                                    <Image 
+                                        src={photoUrl} 
+                                        alt={`Foto de ${cornerItem.label}`} 
+                                        width={150} 
+                                        height={100} 
+                                        className="rounded-md object-cover"
+                                        data-ai-hint="vehicle damage"
+                                    />
+                                </div>
+                            )}
                         </div>
                     );
                 })}
@@ -357,3 +424,6 @@ export function RevisionDiariaVehiculoForm({ ambulance }: RevisionDiariaVehiculo
     </Card>
   );
 }
+
+
+    
