@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart, Users, Activity, DollarSign } from "lucide-react";
+import { BarChart, Users, Activity, DollarSign, Home } from "lucide-react";
 import { ResponsiveContainer, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import React from 'react';
 
