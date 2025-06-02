@@ -2,7 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart, Users, Activity, DollarSign, Home } from "lucide-react";
+import { BarChart, Users, Activity, DollarSign } from "lucide-react";
+import dynamic from 'next/dynamic';
 import { ResponsiveContainer, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import React from 'react';
 
@@ -15,6 +16,8 @@ const chartData = [
   { name: 'May', 'Nuevos Clientes': 60, 'Ingresos (€)': 4800 },
   { name: 'Jun', 'Nuevos Clientes': 23, 'Ingresos (€)': 3800 },
 ];
+
+const HomeIcon = dynamic(() => import('lucide-react').then((mod) => mod.Home), { ssr: false });
 
 // Placeholder para KPIs
 const kpiData = [
