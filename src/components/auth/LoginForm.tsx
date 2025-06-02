@@ -7,11 +7,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/contexts/AuthContext';
-import { Ambulance } from 'lucide-react'; // Using Ambulance icon for logo
+import { ArrowRight, LogIn } from 'lucide-react'; // Added LogIn for main button
 
 export default function LoginForm() {
   const [name, setName] = useState('');
-  const [password, setPassword] = useState(''); // Password is not used in mock auth
+  const [password, setPassword] = useState('');
   const { login } = useAuth();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -19,14 +19,19 @@ export default function LoginForm() {
     login(name);
   };
 
+  const handleTestUserLogin = (testUser: string) => {
+    // Optionally pre-fill fields for visual feedback, then log in
+    setName(testUser);
+    setPassword("123456"); // Mock password as in the image's help text
+    login(testUser);
+  }
+
   return (
-    <Card className="w-full max-w-sm shadow-xl">
+    <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="text-center">
-        <div className="flex justify-center items-center mb-4">
-          <Ambulance className="h-12 w-12 text-primary" />
-        </div>
-        <CardTitle className="text-2xl font-bold">Acceso a AmbuGestión</CardTitle>
-        <CardDescription>Introduce tus credenciales para acceder al sistema de gestión de material de ambulancias.</CardDescription>
+        {/* Icono de ambulancia eliminado de aquí para coincidir con el nuevo diseño, se podría poner encima de la tarjeta en page.tsx si se desea */}
+        <CardTitle className="text-2xl font-bold">Iniciar sesión</CardTitle>
+        <CardDescription>Ingresa tus credenciales para acceder a AmbuGestión.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -34,14 +39,19 @@ export default function LoginForm() {
             <Label htmlFor="name">Usuario</Label>
             <Input
               id="name"
-              placeholder="ej. Alicia Coordinadora, Ambulancia 01"
+              placeholder="Introduce tu usuario" // Cambiado de "ej. Alicia Coordinadora..."
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Contraseña</Label>
+              <a href="#" className="text-sm text-primary hover:underline">
+                ¿Olvidaste tu contraseña?
+              </a>
+            </div>
             <Input
               id="password"
               type="password"
@@ -51,13 +61,37 @@ export default function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button type="submit" className="w-full">Iniciar Sesión</Button>
+          <Button type="submit" className="w-full">
+            <LogIn className="mr-2 h-4 w-4" />
+            Iniciar sesión
+          </Button>
         </form>
       </CardContent>
-      <CardFooter className="text-center text-sm">
-        <p>Prueba con: "Alicia Coordinadora", "Ambulancia 01", o "Carlos Usuario". Contraseña simulada.</p>
+      <CardFooter className="flex flex-col items-center space-y-4 pt-6">
+        <div className="text-sm">
+          ¿No tienes una cuenta?{' '}
+          <a href="#" className="text-primary hover:underline">
+            Crear cuenta
+          </a>
+        </div>
+
+        <div className="w-full pt-4">
+          <p className="text-center text-xs text-muted-foreground mb-3">Cuentas de prueba (contraseña simulada)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {(['Alicia Coordinadora', 'Ambulancia 01', 'Carlos Usuario'] as const).map((userType) => (
+              <Button
+                key={userType}
+                variant="outline"
+                className="w-full justify-between"
+                onClick={() => handleTestUserLogin(userType)}
+              >
+                {userType}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            ))}
+          </div>
+        </div>
       </CardFooter>
     </Card>
   );
 }
-
