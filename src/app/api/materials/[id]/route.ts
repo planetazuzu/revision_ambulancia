@@ -1,3 +1,4 @@
+
 // /api/materials/[id]
 import { NextResponse, type NextRequest } from 'next/server';
 import { getAmpularioMaterialById, updateAmpularioMaterial, deleteAmpularioMaterial } from '@/lib/ampularioStore';
@@ -25,15 +26,23 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params;
     const body = await request.json();
-    const { quantity, expiry_date, name, dose, unit, route, space_id } = body;
+    const { quantity, expiry_date, name, dose, unit, route, space_id, minStockLevel } = body;
 
-    const updates: Partial<Pick<import('@/types').AmpularioMaterial, 'quantity' | 'expiry_date' | 'name' | 'dose' | 'unit' | 'route' | 'space_id'>> = {};
+    const updates: Partial<Pick<import('@/types').AmpularioMaterial, 'quantity' | 'expiry_date' | 'name' | 'dose' | 'unit' | 'route' | 'space_id' | 'minStockLevel'>> = {};
+    
     if (quantity !== undefined) {
         if (typeof quantity !== 'number' || quantity < 0) {
             return NextResponse.json({ error: 'La cantidad debe ser un número no negativo.' }, { status: 400 });
         }
         updates.quantity = quantity;
     }
+    if (minStockLevel !== undefined) {
+        if (minStockLevel !== null && (typeof minStockLevel !== 'number' || minStockLevel < 0)) {
+            return NextResponse.json({ error: 'El nivel mínimo de stock debe ser un número no negativo o nulo.' }, { status: 400 });
+        }
+        updates.minStockLevel = minStockLevel === null ? undefined : minStockLevel; // Store as undefined if null
+    }
+
     if (expiry_date !== undefined) updates.expiry_date = expiry_date;
     if (name !== undefined) updates.name = name;
     if (dose !== undefined) updates.dose = dose;

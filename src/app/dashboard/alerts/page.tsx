@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAppData } from "@/contexts/AppDataContext";
 import type { Alert as AppAlert, Space, Ambulance } from "@/types"; // Renamed to avoid conflict with Lucide Alert
 import { format, parseISO } from "date-fns";
-import { AlertTriangle, Wrench, ShieldAlert, Info, Archive, Sparkles, ClipboardCheck } from "lucide-react";
+import { AlertTriangle, Wrench, ShieldAlert, Info, Archive, Sparkles, ClipboardCheck, PackageMinus, ArchiveX } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -55,9 +55,10 @@ export default function AlertsPage() {
 
         if (configuredEmail) {
           fetchedApiAlerts.forEach(alert => {
-            if (alert.severity === 'high') {
+            // Only toast for high severity central inventory alerts to avoid spam
+            if (alert.severity === 'high' && (alert.type === 'ampulario_expired_material' || alert.type === 'low_stock_central')) {
               toast({
-                title: "ALERTA CRÍTICA (Inventario Central)",
+                title: `ALERTA CRÍTICA (Inv. Central): ${alert.type === 'ampulario_expired_material' ? 'Material Caducado' : 'Stock Bajo'}`,
                 description: `${alert.message} Notificación simulada a ${configuredEmail}.`,
                 variant: "destructive",
                 duration: 10000
@@ -76,7 +77,7 @@ export default function AlertsPage() {
         fetchSpacesAndApiAlerts();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, authLoading, user]); // getNotificationEmailConfig removed as it's called conditionally inside
+  }, [toast, authLoading, user]); 
 
   useEffect(() => {
     const combinedAlerts = [...contextAlerts, ...apiAlerts];
@@ -104,6 +105,8 @@ export default function AlertsPage() {
       case 'ampulario_expiring_soon': return <Archive className={`h-5 w-5 ${colorClass}`} />; 
       case 'ampulario_expired_material': return <Archive className={`h-5 w-5 ${colorClass}`} />; 
       case 'daily_check_pending': return <ClipboardCheck className={`h-5 w-5 ${colorClass}`} />;
+      case 'low_stock_ambulance': return <PackageMinus className={`h-5 w-5 ${colorClass}`} />;
+      case 'low_stock_central': return <ArchiveX className={`h-5 w-5 ${colorClass}`} />;
       default: return <Info className={`h-5 w-5 ${colorClass}`} />;
     }
   };
@@ -123,7 +126,7 @@ export default function AlertsPage() {
     <div>
       <PageHeader
         title="Alertas del Sistema"
-        description="Resumen de tareas pendientes, caducidad de materiales y otras notificaciones importantes."
+        description="Resumen de tareas pendientes, caducidad de materiales, stock bajo y otras notificaciones importantes."
       />
 
       <Card>
@@ -170,7 +173,20 @@ export default function AlertsPage() {
                         actionLink = `/dashboard/ambulances/${alert.ambulanceId}/daily-check`;
                     } else if (alert.type.startsWith('ampulario_') && alert.spaceId) {
                         actionLink = `/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`;
+                    } else if (alert.type === 'low_stock_ambulance' && alert.ambulanceId) {
+                        actionLink = `/dashboard/ambulances/${alert.ambulanceId}/inventory`;
+                    } else if (alert.type === 'low_stock_central' && alert.spaceId) {
+                        actionLink = `/dashboard/ampulario?spaceId=${alert.spaceId}&materialId=${alert.materialId}`;
                     }
+
+
+                    let actionButtonText = "Ver Ambulancia";
+                    if (alert.type.startsWith('ampulario_') || alert.type === 'low_stock_central') {
+                        actionButtonText = "Ver Materiales Central";
+                    } else if (alert.type === 'low_stock_ambulance') {
+                        actionButtonText = "Ver Inventario Ambulancia";
+                    }
+
 
                     return (
                       <TableRow key={alert.id} className={alert.severity === 'high' ? 'bg-destructive/5 hover:bg-destructive/10' : (alert.severity === 'medium' ? 'bg-orange-500/5 hover:bg-orange-500/10' : '')}>
@@ -187,10 +203,10 @@ export default function AlertsPage() {
                         </TableCell>
                         <TableCell>{format(parseISO(alert.createdAt), 'PPP', {locale: es})}</TableCell>
                         <TableCell className="text-right">
-                          {(alert.ambulanceId || alert.type.startsWith('ampulario_')) && (
+                          {(alert.ambulanceId || alert.spaceId) && ( // Condition to show button if context exists
                             <Button variant="outline" size="sm" asChild>
                               <Link href={actionLink}>
-                                {alert.type.startsWith('ampulario_') ? "Ver Materiales" : "Ver Ambulancia"}
+                                {actionButtonText}
                               </Link>
                             </Button>
                           )}

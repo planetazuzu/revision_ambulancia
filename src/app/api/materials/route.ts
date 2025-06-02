@@ -1,3 +1,4 @@
+
 // /api/materials
 import { NextResponse, type NextRequest } from 'next/server';
 import { addAmpularioMaterial, getAmpularioMaterials } from '@/lib/ampularioStore';
@@ -6,7 +7,7 @@ import type { MaterialRoute } from '@/types';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, dose, unit, quantity, route, expiry_date, space_id } = body;
+    const { name, dose, unit, quantity, route, expiry_date, space_id, minStockLevel } = body;
 
     if (!name || !space_id || quantity === undefined || !route) {
       return NextResponse.json({ error: 'Faltan campos obligatorios: nombre, espacio, cantidad, vía' }, { status: 400 });
@@ -15,6 +16,10 @@ export async function POST(request: NextRequest) {
     if (typeof quantity !== 'number' || quantity < 0) {
         return NextResponse.json({ error: 'La cantidad debe ser un número no negativo.' }, { status: 400 });
     }
+    if (minStockLevel !== undefined && (typeof minStockLevel !== 'number' || minStockLevel < 0)) {
+        return NextResponse.json({ error: 'El nivel mínimo de stock debe ser un número no negativo.' }, { status: 400 });
+    }
+
     const validRoutes: MaterialRoute[] = ["IV/IM", "Nebulizador", "Oral"];
     if (!validRoutes.includes(route as MaterialRoute)) {
         return NextResponse.json({ error: `Vía inválida. Debe ser una de: ${validRoutes.join(', ')}.` }, { status: 400 });
@@ -28,6 +33,7 @@ export async function POST(request: NextRequest) {
       route,
       expiry_date,
       space_id,
+      minStockLevel: minStockLevel,
     };
 
     const newMaterial = addAmpularioMaterial(newMaterialData);

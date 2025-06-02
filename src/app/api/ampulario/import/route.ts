@@ -1,3 +1,4 @@
+
 // /api/ampulario/import
 import { NextResponse, type NextRequest } from 'next/server';
 import Papa from 'papaparse';
@@ -23,17 +24,17 @@ export async function POST(request: NextRequest) {
     }
 
     let importedCount = 0;
-    const errorsList: string[] = []; // Renamed to avoid conflict
+    const errorsList: string[] = [];
     let dataRows: any[] = [];
 
     if (isExcel) {
         const bytes = await file.arrayBuffer();
-        const workbook = XLSX.read(bytes, { type: 'buffer', cellDates: true }); // cellDates: true helps with date objects
+        const workbook = XLSX.read(bytes, { type: 'buffer', cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         dataRows = XLSX.utils.sheet_to_json(worksheet, {
-            raw: false, // Process dates as strings if not already Date objects by cellDates
-            dateNF: 'yyyy-mm-dd' // Default format if dates are numbers
+            raw: false, 
+            dateNF: 'yyyy-mm-dd' 
         });
     } else { // CSV
         const fileContent = await file.text();
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
     const materialsToCreate: Omit<AmpularioMaterial, 'id' | 'created_at' | 'updated_at'>[] = [];
 
     dataRows.forEach((row, index) => {
-      const { name, dose, unit, quantity, route, expiry_date, space_id } = row;
+      const { name, dose, unit, quantity, route, expiry_date, space_id, min_stock_level } = row;
 
       if (!name || !space_id) {
         errorsList.push(`Fila ${index + 2}: Faltan campos obligatorios (name, space_id).`);
@@ -70,6 +71,16 @@ export async function POST(request: NextRequest) {
         return;
       }
 
+      let parsedMinStockLevel: number | undefined = undefined;
+      if (min_stock_level !== undefined && min_stock_level !== null && min_stock_level !== '') {
+        parsedMinStockLevel = parseInt(min_stock_level, 10);
+        if (isNaN(parsedMinStockLevel) || parsedMinStockLevel < 0) {
+          errorsList.push(`Fila ${index + 2}: Nivel mínimo de stock '${min_stock_level}' inválido. Debe ser un entero no negativo.`);
+          return;
+        }
+      }
+
+
       const validRoutes: MaterialRoute[] = ["IV/IM", "Nebulizador", "Oral"];
       if (route && !validRoutes.includes(route as MaterialRoute)) {
           errorsList.push(`Fila ${index + 2}: Vía '${route}' inválida. Debe ser una de: ${validRoutes.join(', ')}.`);
@@ -79,10 +90,10 @@ export async function POST(request: NextRequest) {
       let formattedExpiryDate: string | undefined = undefined;
       if (expiry_date) {
         let parsedDate: Date | null = null;
-        if (expiry_date instanceof Date && isValid(expiry_date)) { // If XLSX parsed it as a Date object
+        if (expiry_date instanceof Date && isValid(expiry_date)) { 
             parsedDate = expiry_date;
         } else if (typeof expiry_date === 'string') {
-            parsedDate = parseISO(expiry_date); // AAAA-MM-DD
+            parsedDate = parseISO(expiry_date); 
             if (!isValid(parsedDate)) {
                 const parts = expiry_date.split(/[\/\-]/);
                 if (parts.length === 3) {
@@ -90,22 +101,17 @@ export async function POST(request: NextRequest) {
                     const month = parseInt(parts[1], 10);
                     const year = parseInt(parts[2], 10);
                     if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-                         // Try DD/MM/YYYY
                         parsedDate = new Date(year, month - 1, day);
                         if (!isValid(parsedDate)) {
-                            // Try MM/DD/YYYY if DD/MM/YYYY was invalid (e.g. month > 12)
                             parsedDate = new Date(year, day - 1, month);
                         }
                     }
                 }
             }
-        } else if (typeof expiry_date === 'number') { // Excel date serial number
-             // This case is less ideal, prefer string/date objects from Excel.
-             // Basic conversion for dates after 1900, not handling Mac 1904 base date.
-            const excelEpoch = new Date(1899, 11, 30); // Excel epoch starts Dec 30, 1899 for PC
+        } else if (typeof expiry_date === 'number') { 
+            const excelEpoch = new Date(1899, 11, 30); 
             parsedDate = new Date(excelEpoch.getTime() + expiry_date * 24 * 60 * 60 * 1000);
         }
-
 
         if (parsedDate && isValid(parsedDate)) {
           formattedExpiryDate = formatISO(parsedDate);
@@ -123,6 +129,7 @@ export async function POST(request: NextRequest) {
         route: route as MaterialRoute || 'Oral',
         expiry_date: formattedExpiryDate,
         space_id,
+        minStockLevel: parsedMinStockLevel,
       });
     });
 

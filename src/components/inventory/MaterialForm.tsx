@@ -27,6 +27,7 @@ const consumableSchema = z.object({
   quantity: z.coerce.number().min(0, "La cantidad no puede ser negativa"),
   expiryDate: z.date({ required_error: "La fecha de caducidad es obligatoria." }),
   storageLocation: z.string().optional(),
+  minStockLevel: z.coerce.number().min(0, "El nivel mínimo no puede ser negativo.").optional().nullable(),
 });
 
 const nonConsumableSchema = z.object({
@@ -34,6 +35,7 @@ const nonConsumableSchema = z.object({
   serialNumber: z.string().min(1, "El número de serie es obligatorio"),
   status: z.enum(['Operacional', 'Necesita Reparación', 'Fuera de Servicio'], { errorMap: () => ({ message: "Debe seleccionar un estado."}) }),
   storageLocation: z.string().optional(),
+  // No minStockLevel for non-consumables
 });
 
 interface MaterialFormProps {
@@ -61,10 +63,12 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
     if (isOpen) {
       if (material) {
         if (materialType === 'consumable' && 'expiryDate' in material) {
+          const consumable = material as ConsumableMaterial;
           form.reset({
-            ...material,
-            expiryDate: new Date(material.expiryDate),
-            storageLocation: material.storageLocation || "",
+            ...consumable,
+            expiryDate: new Date(consumable.expiryDate),
+            storageLocation: consumable.storageLocation || "",
+            minStockLevel: consumable.minStockLevel ?? null,
           } as CurrentFormValues);
         } else {
           form.reset({
@@ -75,7 +79,7 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
       } else {
         form.reset(
           materialType === 'consumable'
-            ? { name: '', reference: '', quantity: 0, expiryDate: new Date(), storageLocation: "" }
+            ? { name: '', reference: '', quantity: 0, expiryDate: new Date(), storageLocation: "", minStockLevel: null }
             : { name: '', serialNumber: '', status: 'Operacional', storageLocation: "" }
         );
       }
@@ -91,6 +95,7 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
         ambulanceId: ambulance.id,
         expiryDate: consumableData.expiryDate.toISOString(),
         storageLocation: consumableData.storageLocation || undefined,
+        minStockLevel: consumableData.minStockLevel === null ? undefined : consumableData.minStockLevel,
       };
       if (material) {
         updateConsumableMaterial({ ...material as ConsumableMaterial, ...payload });
@@ -157,17 +162,30 @@ export function MaterialForm({ ambulance, materialType, material, isOpen, onOpen
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="quantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cantidad</FormLabel>
-                      <FormControl><Input type="number" placeholder="ej. 10" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="quantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cantidad Actual</FormLabel>
+                        <FormControl><Input type="number" placeholder="ej. 10" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="minStockLevel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nivel Mín. Stock (Opcional)</FormLabel>
+                        <FormControl><Input type="number" placeholder="ej. 5" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={form.control}
                   name="expiryDate"

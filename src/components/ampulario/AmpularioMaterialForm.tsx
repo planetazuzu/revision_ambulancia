@@ -30,6 +30,7 @@ const ampularioMaterialSchema = z.object({
   route: materialRouteEnum,
   expiry_date: z.date().optional().nullable(),
   space_id: z.string().min(1, "El espacio es obligatorio"),
+  minStockLevel: z.coerce.number().min(0, "El nivel mínimo no puede ser negativo.").optional().nullable(),
 });
 
 type AmpularioMaterialFormValues = z.infer<typeof ampularioMaterialSchema>;
@@ -55,6 +56,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
       route: 'Oral',
       expiry_date: null,
       space_id: spaces.find(s => s.id === 'space23')?.id || spaces[0]?.id || '',
+      minStockLevel: null,
     },
   });
 
@@ -69,6 +71,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
           route: material.route,
           expiry_date: material.expiry_date && isDateValid(parseISO(material.expiry_date)) ? parseISO(material.expiry_date) : null,
           space_id: material.space_id,
+          minStockLevel: material.minStockLevel ?? null,
         });
       } else {
          form.reset({
@@ -78,7 +81,8 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
             quantity: 0,
             route: 'Oral', 
             expiry_date: null,
-            space_id: spaces.find(s => s.id === 'space23')?.id || spaces[0]?.id || '', 
+            space_id: spaces.find(s => s.id === 'space23')?.id || spaces[0]?.id || '',
+            minStockLevel: null,
         });
       }
     }
@@ -88,6 +92,7 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
     const payload = {
         ...data,
         expiry_date: data.expiry_date ? format(data.expiry_date, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx") : undefined,
+        minStockLevel: data.minStockLevel === null ? undefined : data.minStockLevel,
     };
 
     const url = material ? `/api/materials/${material.id}` : '/api/materials';
@@ -171,17 +176,30 @@ export function AmpularioMaterialForm({ material, spaces, isOpen, onOpenChange, 
                 )}
                 />
             </div>
-            <FormField
-              control={form.control}
-              name="quantity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cantidad</FormLabel>
-                  <FormControl><Input type="number" placeholder="ej. 10" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cantidad Actual</FormLabel>
+                    <FormControl><Input type="number" placeholder="ej. 10" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="minStockLevel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nivel Mín. Stock (Opcional)</FormLabel>
+                    <FormControl><Input type="number" placeholder="ej. 5" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value === '' ? null : Number(e.target.value))} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="route"

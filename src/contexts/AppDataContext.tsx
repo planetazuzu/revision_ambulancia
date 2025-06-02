@@ -1,10 +1,10 @@
 
 "use client";
 
-import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial, InventoryLogEntry, InventoryLogAction, ChecklistItem, ChecklistItemStatus } from '@/types';
+import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial, InventoryLogEntry, InventoryLogAction, ChecklistItem, ChecklistItemStatus, AlertType } from '@/types';
 // Importar la lista ya no es necesario desde types, se gestiona aquí
 import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo, useCallback } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuth } from './AuthContext';
 import { toast } from '@/hooks/use-toast'; // Asegúrate que toast está disponible
@@ -450,10 +450,10 @@ export const initialAmbulances: Ambulance[] = [
 ];
 
 const initialConsumables: ConsumableMaterial[] = [
-    { id: 'cons001', ambulanceId: 'amb001', name: 'Vendas Estériles (paquete 10)', reference: 'BNDG-01', quantity: 50, expiryDate: new Date(Date.now() + 30*24*60*60*1000).toISOString(), storageLocation: "Mochila Principal (Rojo)" },
-    { id: 'cons002', ambulanceId: 'amb001', name: 'Solución Salina 500ml', reference: 'SLN-05', quantity: 10, expiryDate: new Date(Date.now() - 5*24*60*60*1000).toISOString(), storageLocation: "Mochila Circulatorio (Amarillo)" },
+    { id: 'cons001', ambulanceId: 'amb001', name: 'Vendas Estériles (paquete 10)', reference: 'BNDG-01', quantity: 50, expiryDate: new Date(Date.now() + 30*24*60*60*1000).toISOString(), storageLocation: "Mochila Principal (Rojo)", minStockLevel: 20 },
+    { id: 'cons002', ambulanceId: 'amb001', name: 'Solución Salina 500ml', reference: 'SLN-05', quantity: 2, expiryDate: new Date(Date.now() - 5*24*60*60*1000).toISOString(), storageLocation: "Mochila Circulatorio (Amarillo)", minStockLevel: 5 },
     { id: 'cons003', ambulanceId: 'amb002', name: 'Guantes Estériles Talla M (Caja)', reference: 'GLV-M', quantity: 5, expiryDate: new Date(Date.now() + 5*24*60*60*1000).toISOString(), storageLocation: "Cajón Lateral Superior Izq." },
-    { id: 'cons004', ambulanceId: 'amb001', name: 'Mascarilla RCP Adulto', reference: 'RCP-AD', quantity: 2, expiryDate: new Date(Date.now() + 100*24*60*60*1000).toISOString(), storageLocation: "Mochila Vía Aérea (Azul)" },
+    { id: 'cons004', ambulanceId: 'amb001', name: 'Mascarilla RCP Adulto', reference: 'RCP-AD', quantity: 1, expiryDate: new Date(Date.now() + 100*24*60*60*1000).toISOString(), storageLocation: "Mochila Vía Aérea (Azul)", minStockLevel: 2 },
     { id: 'cons005', ambulanceId: 'amb001', name: 'Apósitos Adhesivos (caja)', reference: 'APOS-MIX', quantity: 1, expiryDate: new Date(Date.now() + 60*24*60*60*1000).toISOString() },
 ];
 
@@ -561,7 +561,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setConfigurableAmbulanceStorageLocations(newLocations);
     localStorage.setItem(LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS, JSON.stringify(newLocations));
     toast({ title: "Ubicación Añadida", description: `"${location.trim()}" ha sido añadida.` });
-  }, [user, configurableAmbulanceStorageLocations]);
+  }, [user, configurableAmbulanceStorageLocations, toast]);
 
   const updateAmbulanceStorageLocation = useCallback((oldLocation: string, newLocation: string): boolean => {
     if (user?.role !== 'coordinador' || !newLocation.trim() || configurableAmbulanceStorageLocations.includes(newLocation.trim())) {
@@ -581,7 +581,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setNonConsumableMaterials(prev => prev.map(m => m.storageLocation === oldLocation ? { ...m, storageLocation: newLocation.trim() } : m));
     toast({ title: "Ubicación Actualizada", description: `"${oldLocation}" es ahora "${newLocation.trim()}".` });
     return true;
-  }, [user, configurableAmbulanceStorageLocations]);
+  }, [user, configurableAmbulanceStorageLocations, toast]);
 
   const deleteAmbulanceStorageLocation = useCallback((locationToDelete: string): boolean => {
     if (user?.role !== 'coordinador') return false;
@@ -597,7 +597,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS, JSON.stringify(newLocations));
     toast({ title: "Ubicación Eliminada", description: `"${locationToDelete}" ha sido eliminada.` });
     return true;
-  }, [user, configurableAmbulanceStorageLocations, consumableMaterials, nonConsumableMaterials]);
+  }, [user, configurableAmbulanceStorageLocations, consumableMaterials, nonConsumableMaterials, toast]);
 
 
   // --- Configurable Mechanical Review Items ---
@@ -616,7 +616,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setConfigurableMechanicalReviewItems(newItems);
     localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(newItems));
     toast({ title: "Ítem Añadido", description: `"${item.name.trim()}" añadido a la plantilla de revisión.` });
-  }, [user, configurableMechanicalReviewItems]);
+  }, [user, configurableMechanicalReviewItems, toast]);
 
   const updateConfigurableMechanicalReviewItem = useCallback((originalName: string, newName: string): boolean => {
     if (user?.role !== 'coordinador' || !newName.trim() || (originalName !== newName && configurableMechanicalReviewItems.some(i => i.name.toLowerCase() === newName.trim().toLowerCase())) ) {
@@ -632,7 +632,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(newItems));
     toast({ title: "Ítem Actualizado", description: `"${originalName}" es ahora "${newName.trim()}". (Esto solo afecta a nuevas revisiones)` });
     return true;
-  }, [user, configurableMechanicalReviewItems]);
+  }, [user, configurableMechanicalReviewItems, toast]);
 
   const deleteConfigurableMechanicalReviewItem = useCallback((nameToDelete: string): boolean => {
     if (user?.role !== 'coordinador') return false;
@@ -641,7 +641,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(newItems));
     toast({ title: "Ítem Eliminado", description: `"${nameToDelete}" eliminado de la plantilla de revisión. (Las revisiones existentes no cambian)` });
     return true;
-  }, [user, configurableMechanicalReviewItems]);
+  }, [user, configurableMechanicalReviewItems, toast]);
 
 
   const accessibleAmbulances = useMemo(() => {
@@ -828,7 +828,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       materialData.name,
       'consumable',
       'added',
-      `Añadido con ${materialData.quantity} unidades. Caducidad: ${format(parseISO(materialData.expiryDate), 'PPP', {locale: es})}. Ubicación: ${materialData.storageLocation || 'N/D'}.`,
+      `Añadido con ${materialData.quantity} unidades. Caducidad: ${format(parseISO(materialData.expiryDate), 'PPP', {locale: es})}. Ubicación: ${materialData.storageLocation || 'N/D'}. Min Stock: ${materialData.minStockLevel ?? 'N/D'}`,
       undefined,
       materialData.quantity
     );
@@ -859,6 +859,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (originalMaterial.storageLocation !== updatedMaterial.storageLocation) {
       detailsArray.push(`Ubicación: "${originalMaterial.storageLocation || 'N/D'}" -> "${updatedMaterial.storageLocation || 'N/D'}"`);
     }
+    if (originalMaterial.minStockLevel !== updatedMaterial.minStockLevel) {
+      detailsArray.push(`Min Stock: ${originalMaterial.minStockLevel ?? 'N/D'} -> ${updatedMaterial.minStockLevel ?? 'N/D'}`);
+    }
+
 
     if (detailsArray.length > 0) {
         addInventoryLogEntry(
@@ -887,7 +891,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       materialToDelete.name,
       'consumable',
       'deleted',
-      `Eliminado. Tenía ${materialToDelete.quantity} unidades. Caducidad: ${format(parseISO(materialToDelete.expiryDate), 'PPP', {locale: es})}. Ubicación: ${materialToDelete.storageLocation || 'N/D'}.`,
+      `Eliminado. Tenía ${materialToDelete.quantity} unidades. Caducidad: ${format(parseISO(materialToDelete.expiryDate), 'PPP', {locale: es})}. Ubicación: ${materialToDelete.storageLocation || 'N/D'}. Min Stock: ${materialToDelete.minStockLevel ?? 'N/D'}`,
       materialToDelete.quantity,
       0
     );
@@ -1081,7 +1085,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     );
     saveConfigurableUsvbKits(updatedKits);
     toast({ title: "Detalles del Kit Actualizados", description: `Se han actualizado los detalles para ${details.name}.`});
-  }, [user, configurableUsvbKits]);
+  }, [user, configurableUsvbKits, toast]);
 
   const addMaterialToConfigurableUsvbKit = useCallback((kitId: string, materialData: { name: string; targetQuantity: number }) => {
     if (user?.role !== 'coordinador') return;
@@ -1108,7 +1112,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         saveConfigurableUsvbKits(updatedKits);
         toast({ title: "Material Añadido al Kit", description: `"${materialData.name}" añadido a la plantilla del kit.`});
     }
-  }, [user, configurableUsvbKits]);
+  }, [user, configurableUsvbKits, toast]);
 
   const updateMaterialInConfigurableUsvbKit = useCallback((kitId: string, materialId: string, updates: { name?: string; targetQuantity?: number }) => {
     if (user?.role !== 'coordinador') return;
@@ -1143,7 +1147,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         saveConfigurableUsvbKits(updatedKits);
         toast({ title: "Material del Kit Actualizado", description: `Material "${materialNameForToast}" actualizado en la plantilla.`});
     }
-  }, [user, configurableUsvbKits]);
+  }, [user, configurableUsvbKits, toast]);
 
   const deleteMaterialFromConfigurableUsvbKit = useCallback((kitId: string, materialId: string) => {
     if (user?.role !== 'coordinador') return;
@@ -1158,7 +1162,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
     saveConfigurableUsvbKits(updatedKits);
     toast({ title: "Material Eliminado del Kit", description: `Material "${materialNameForToast}" eliminado de la plantilla.`});
-  }, [user, configurableUsvbKits]);
+  }, [user, configurableUsvbKits, toast]);
   
   const generateAlerts = useCallback(() => {
     if (authLoading || !user) return; 
@@ -1202,6 +1206,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      // Low Stock Alerts for Ambulance Inventory
+      const ambulanceConsumables = getConsumableMaterialsByAmbulanceId(ambulance.id);
+      ambulanceConsumables.forEach(material => {
+        if (material.minStockLevel !== undefined && material.quantity <= material.minStockLevel) {
+          newAlerts.push({
+            id: `alert-lowstock-amb-${material.id}`,
+            type: 'low_stock_ambulance',
+            message: `Stock bajo: ${material.name} en ${ambulance.name}. Actual: ${material.quantity}, Mín: ${material.minStockLevel}.`,
+            ambulanceId: ambulance.id,
+            materialId: material.id,
+            severity: material.quantity === 0 ? 'high' : 'medium',
+            createdAt: today.toISOString(),
+          });
+        }
+      });
+
     });
 
     const accessibleAmbulanceIds = new Set(accessibleAmbulances.map(a => a.id));
@@ -1211,7 +1231,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const expiryDate = parseISO(material.expiryDate); // Make sure it's a Date object
       const ambulance = allAmbulancesData.find(a=> a.id === material.ambulanceId);
       const ambulanceName = ambulance ? ambulance.name : 'Ambulancia Desconocida';
-      const daysUntilExpiry = (expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+      const daysUntilExpiry = differenceInDays(expiryDate, today); // Using differenceInDays from date-fns
+
 
       if (daysUntilExpiry < 0) {
         const alertMsg = `Material ${material.name} en ${ambulanceName} caducó el ${format(expiryDate, 'PPP', { locale: es })}.`;
@@ -1227,7 +1248,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (configuredEmail && user?.role === 'coordinador') {
             toast({ title: "ALERTA CRÍTICA (Ambulancia)", description: `${alertMsg} Notificación simulada a ${configuredEmail}.`, variant: "destructive", duration: 10000 });
         }
-      } else if (daysUntilExpiry <= 7) {
+      } else if (daysUntilExpiry <= 7) { // Keep this at 7 days for expiry, or adjust if needed (original was 7)
         newAlerts.push({
           id: `alert-expsoon-${material.id}`,
           type: 'expiring_soon',
@@ -1241,7 +1262,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
     setAlerts(newAlerts);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user, accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, allAmbulancesData, getNotificationEmailConfig, revisionesDiariasVehiculo]); 
+  }, [authLoading, user, accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, allAmbulancesData, getNotificationEmailConfig, revisionesDiariasVehiculo, getConsumableMaterialsByAmbulanceId, toast]); 
 
   useEffect(() => {
     if (!authLoading) {

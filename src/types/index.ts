@@ -57,6 +57,7 @@ export interface ConsumableMaterial {
   expiryDate: string; // ISO Date string
   ambulanceId: string;
   storageLocation?: string;
+  minStockLevel?: number; // Added for low stock alerts
 }
 
 export type NonConsumableMaterialStatus = 'Operacional' | 'Necesita Reparación' | 'Fuera de Servicio';
@@ -81,6 +82,7 @@ export interface AmpularioMaterial {
   quantity: number;
   route: MaterialRoute;
   expiry_date?: string; // Date ISO string, optional
+  minStockLevel?: number; // Added for low stock alerts
   created_at: string; // Date ISO string
   updated_at: string; // Date ISO string
 }
@@ -90,7 +92,16 @@ export interface Space {
   name: string;
 }
 
-export type AlertType = 'review_pending' | 'expiring_soon' | 'expired_material' | 'ampulario_expiring_soon' | 'ampulario_expired_material' | 'cleaning_pending' | 'daily_check_pending';
+export type AlertType = 
+  'review_pending' | 
+  'expiring_soon' | 
+  'expired_material' | 
+  'ampulario_expiring_soon' | 
+  'ampulario_expired_material' | 
+  'cleaning_pending' | 
+  'daily_check_pending' |
+  'low_stock_ambulance' | // New alert type
+  'low_stock_central';   // New alert type
 
 export interface Alert {
   id: string;
