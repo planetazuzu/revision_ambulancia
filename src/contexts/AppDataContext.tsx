@@ -10,7 +10,6 @@ import { useAuth } from './AuthContext';
 import { toast } from '@/hooks/use-toast'; // Asegúrate que toast está disponible
 
 // --- USVB Kit Data Transformation ---
-// ... (código de USVB Kits se mantiene igual, omitido por brevedad)
 const rawUSVBKitData: { [key: number]: string[] } = {
   1: ["Mochila pediátrica"],  
   2: ["Mochila adulto"],  
@@ -273,7 +272,8 @@ const parseMaterialString = (materialStr: string): { name: string; quantity: num
   return { name: materialStr.trim(), quantity: 1 };
 };
 
-const processedUSVBKits: USVBKit[] = Object.entries(rawUSVBKitData)
+const generateInitialConfigurableUsvbKits = (): USVBKit[] => {
+ return Object.entries(rawUSVBKitData)
   .map(([kitNumStr, materialStrings]) => {
     const kitNumber = parseInt(kitNumStr, 10);
     const details = kitDetailsMap[kitNumber] || { name: `Kit Desconocido ${kitNumber}`, iconName: 'Package', genericImageHint: 'medical supplies' };
@@ -281,15 +281,15 @@ const processedUSVBKits: USVBKit[] = Object.entries(rawUSVBKitData)
     const materials: USVBKitMaterial[] = materialStrings.map((matStr, index) => {
       const parsed = parseMaterialString(matStr);
       return {
-        id: `usvb-kit${kitNumber}-mat-${index}-${parsed.name.replace(/\s+/g, '-').toLowerCase().substring(0,50)}`, // Added substring to avoid overly long ids
+        id: `usvb-kit${kitNumber}-matcfg-${index}-${parsed.name.replace(/\s+/g, '-').toLowerCase().substring(0,50)}`,
         name: parsed.name,
-        quantity: parsed.quantity,
+        quantity: parsed.quantity, // For config, this is the target/ideal quantity
         targetQuantity: parsed.quantity, 
       };
     });
 
     return {
-      id: `usvb-kit-${kitNumber.toString().padStart(2, '0')}`,
+      id: `usvb-kitcfg-${kitNumber.toString().padStart(2, '0')}`,
       number: kitNumber,
       name: details.name,
       iconName: details.iconName,
@@ -298,9 +298,11 @@ const processedUSVBKits: USVBKit[] = Object.entries(rawUSVBKitData)
     };
   })
   .sort((a, b) => a.number - b.number);
+};
 
 const LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS = 'ambuConfigurableAmbulanceLocations';
-const LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS = 'ambuConfigurableMechReviewItems'; // Nueva clave
+const LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS = 'ambuConfigurableMechReviewItems';
+const LOCAL_STORAGE_CONFIG_USVB_KITS = 'ambuConfigurableUsvbKits'; // New key for USVB kits config
 
 const defaultInitialAmbulanceStorageLocations: AmbulanceStorageLocation[] = [
     "Mochila Principal (Rojo)", "Mochila Vía Aérea (Azul)", "Mochila Circulatorio (Amarillo)",
@@ -390,27 +392,31 @@ interface AppDataContextType {
   getRevisionDiariaVehiculoByAmbulanceId: (ambulanceId: string) => RevisionDiariaVehiculo | undefined;
   saveRevisionDiariaVehiculo: (check: Omit<RevisionDiariaVehiculo, 'id'>) => void;
   
-  // Configurable Ambulance Storage Locations
   getAmbulanceStorageLocations: () => readonly AmbulanceStorageLocation[];
   addAmbulanceStorageLocation: (location: string) => void;
   updateAmbulanceStorageLocation: (oldLocation: string, newLocation: string) => boolean;
   deleteAmbulanceStorageLocation: (location: string) => boolean;
 
-  // Configurable Mechanical Review Items
   getConfigurableMechanicalReviewItems: () => Readonly<{ name: string }[]>;
   addConfigurableMechanicalReviewItem: (item: { name: string }) => void;
   updateConfigurableMechanicalReviewItem: (originalName: string, newName: string) => boolean;
   deleteConfigurableMechanicalReviewItem: (name: string) => boolean;
 
   // USVB Kit Management
-  usvbKits: USVBKit[];
+  usvbKits: USVBKit[]; // Operational data with current quantities
   getUSVBKitById: (kitId: string) => USVBKit | undefined;
   updateUSVBKitMaterialQuantity: (kitId: string, materialId: string, newQuantity: number) => void;
+  
+  // USVB Kit Configuration Management
+  getConfigurableUsvbKits: () => Readonly<USVBKit[]>;
+  updateConfigurableUsvbKitDetails: (kitId: string, details: Pick<USVBKit, 'name' | 'iconName' | 'genericImageHint'>) => void;
+  addMaterialToConfigurableUsvbKit: (kitId: string, materialData: { name: string; targetQuantity: number }) => void;
+  updateMaterialInConfigurableUsvbKit: (kitId: string, materialId: string, updates: { name?: string; targetQuantity?: number }) => void;
+  deleteMaterialFromConfigurableUsvbKit: (kitId: string, materialId: string) => void;
 
   inventoryLogs: InventoryLogEntry[];
   getInventoryLogsByAmbulanceId: (ambulanceId: string) => InventoryLogEntry[];
 
-  // Notification Email Config
   getNotificationEmailConfig: () => string | null;
   setNotificationEmailConfig: (email: string | null) => void;
 }
@@ -471,11 +477,35 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [nonConsumableMaterials, setNonConsumableMaterials] = useState<NonConsumableMaterial[]>(initialNonConsumables);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [revisionesDiariasVehiculo, setRevisionesDiariasVehiculo] = useState<RevisionDiariaVehiculo[]>([]);
-  const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>(processedUSVBKits); 
+  
+  // USVB Kits: `configurableUsvbKits` is the template/config, `usvbKitsData` is operational data.
+  const [configurableUsvbKits, setConfigurableUsvbKits] = useState<USVBKit[]>(generateInitialConfigurableUsvbKits());
+  const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>([]); // Operational data
+
   const [inventoryLogs, setInventoryLogs] = useState<InventoryLogEntry[]>([]);
   const [notificationEmailConfig, setNotificationEmailConfigState] = useState<string | null>(null);
   const [configurableAmbulanceStorageLocations, setConfigurableAmbulanceStorageLocations] = useState<string[]>(defaultInitialAmbulanceStorageLocations);
   const [configurableMechanicalReviewItems, setConfigurableMechanicalReviewItems] = useState<{name: string}[]>(defaultInitialMechanicalReviewItems);
+
+  // Sync operational usvbKitsData with configurableUsvbKits
+  useEffect(() => {
+    setUsvbKitsData(prevOperationalKits => {
+        return configurableUsvbKits.map(configKit => {
+            const existingOperationalKit = prevOperationalKits.find(opKit => opKit.id === configKit.id);
+            return {
+                ...configKit, // Base structure from config
+                materials: configKit.materials.map(configMaterial => {
+                    const existingOperationalMaterial = existingOperationalKit?.materials.find(opMat => opMat.name === configMaterial.name); // Match by name if ID changes or for new
+                    return {
+                        ...configMaterial, // Includes name and targetQuantity from config
+                        id: existingOperationalMaterial?.id || `usvb-mat-${configKit.id}-${configMaterial.name.replace(/\s+/g, '-')}`, // Keep old ID or generate new
+                        quantity: existingOperationalMaterial?.quantity ?? configMaterial.targetQuantity, // Use existing quantity or default to target
+                    };
+                }),
+            };
+        });
+    });
+  }, [configurableUsvbKits]);
 
 
   // Load configs from localStorage
@@ -491,6 +521,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const storedMechItems = localStorage.getItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS);
       if (storedMechItems) setConfigurableMechanicalReviewItems(JSON.parse(storedMechItems));
       else localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(defaultInitialMechanicalReviewItems));
+
+      const storedUsvbKitsConfig = localStorage.getItem(LOCAL_STORAGE_CONFIG_USVB_KITS);
+      if (storedUsvbKitsConfig) setConfigurableUsvbKits(JSON.parse(storedUsvbKitsConfig));
+      else localStorage.setItem(LOCAL_STORAGE_CONFIG_USVB_KITS, JSON.stringify(generateInitialConfigurableUsvbKits()));
     }
   }, []);
 
@@ -602,7 +636,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const deleteConfigurableMechanicalReviewItem = useCallback((nameToDelete: string): boolean => {
     if (user?.role !== 'coordinador') return false;
-    // No se verifica si está en uso en revisiones históricas para el prototipo, solo se elimina de la plantilla.
     const newItems = configurableMechanicalReviewItems.filter(item => item.name !== nameToDelete);
     setConfigurableMechanicalReviewItems(newItems);
     localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(newItems));
@@ -1010,7 +1043,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // --- USVB Kit Management ---
+  // --- USVB Kit (Operational Data) Management ---
   const getUSVBKitById = (kitId: string): USVBKit | undefined => {
     return usvbKitsData.find(kit => kit.id === kitId);
   };
@@ -1030,6 +1063,102 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       })
     );
   };
+
+  // --- USVB Kit Configuration Management ---
+  const getConfigurableUsvbKits = useCallback((): Readonly<USVBKit[]> => {
+    return configurableUsvbKits;
+  }, [configurableUsvbKits]);
+
+  const saveConfigurableUsvbKits = (kits: USVBKit[]) => {
+    setConfigurableUsvbKits(kits);
+    localStorage.setItem(LOCAL_STORAGE_CONFIG_USVB_KITS, JSON.stringify(kits));
+  };
+
+  const updateConfigurableUsvbKitDetails = useCallback((kitId: string, details: Pick<USVBKit, 'name' | 'iconName' | 'genericImageHint'>) => {
+    if (user?.role !== 'coordinador') return;
+    const updatedKits = configurableUsvbKits.map(kit => 
+      kit.id === kitId ? { ...kit, ...details } : kit
+    );
+    saveConfigurableUsvbKits(updatedKits);
+    toast({ title: "Detalles del Kit Actualizados", description: `Se han actualizado los detalles para ${details.name}.`});
+  }, [user, configurableUsvbKits]);
+
+  const addMaterialToConfigurableUsvbKit = useCallback((kitId: string, materialData: { name: string; targetQuantity: number }) => {
+    if (user?.role !== 'coordinador') return;
+    const updatedKits = configurableUsvbKits.map(kit => {
+      if (kit.id === kitId) {
+        // Check if material with the same name already exists in this kit's config
+        const materialExists = kit.materials.some(m => m.name.toLowerCase() === materialData.name.toLowerCase());
+        if (materialExists) {
+          toast({ title: "Error", description: `El material "${materialData.name}" ya existe en este kit.`, variant: "destructive" });
+          return kit; // Return kit unmodified
+        }
+        const newMaterial: USVBKitMaterial = {
+          id: `usvb-kit${kit.number}-matcfg-${Date.now()}-${materialData.name.replace(/\s+/g, '-').toLowerCase().substring(0,30)}`,
+          name: materialData.name,
+          targetQuantity: materialData.targetQuantity,
+          quantity: materialData.targetQuantity, // In config, quantity is usually same as target
+        };
+        return { ...kit, materials: [...kit.materials, newMaterial] };
+      }
+      return kit;
+    });
+    // Only save if no error was thrown (i.e., kit was actually modified)
+    if (!configurableUsvbKits.find(kit => kit.id === kitId)?.materials.some(m => m.name.toLowerCase() === materialData.name.toLowerCase())) {
+        saveConfigurableUsvbKits(updatedKits);
+        toast({ title: "Material Añadido al Kit", description: `"${materialData.name}" añadido a la plantilla del kit.`});
+    }
+  }, [user, configurableUsvbKits]);
+
+  const updateMaterialInConfigurableUsvbKit = useCallback((kitId: string, materialId: string, updates: { name?: string; targetQuantity?: number }) => {
+    if (user?.role !== 'coordinador') return;
+    let materialNameForToast = "";
+    const updatedKits = configurableUsvbKits.map(kit => {
+      if (kit.id === kitId) {
+        // Check for name conflict if name is being updated
+        if (updates.name) {
+            const existingMaterialWithNewName = kit.materials.find(m => m.id !== materialId && m.name.toLowerCase() === updates.name!.toLowerCase());
+            if (existingMaterialWithNewName) {
+                toast({ title: "Error", description: `Ya existe un material llamado "${updates.name}" en este kit.`, variant: "destructive" });
+                return kit; // Return kit unmodified to prevent update
+            }
+        }
+        return {
+          ...kit,
+          materials: kit.materials.map(m => {
+            if (m.id === materialId) {
+              materialNameForToast = updates.name || m.name;
+              return { ...m, ...updates, quantity: updates.targetQuantity ?? m.quantity }; // Update quantity if targetQuantity changes
+            }
+            return m;
+          }),
+        };
+      }
+      return kit;
+    });
+    // Check if an update actually happened (e.g. no name conflict)
+    const originalKit = configurableUsvbKits.find(k => k.id === kitId);
+    const updatedKit = updatedKits.find(k => k.id === kitId);
+    if (JSON.stringify(originalKit) !== JSON.stringify(updatedKit)) {
+        saveConfigurableUsvbKits(updatedKits);
+        toast({ title: "Material del Kit Actualizado", description: `Material "${materialNameForToast}" actualizado en la plantilla.`});
+    }
+  }, [user, configurableUsvbKits]);
+
+  const deleteMaterialFromConfigurableUsvbKit = useCallback((kitId: string, materialId: string) => {
+    if (user?.role !== 'coordinador') return;
+    let materialNameForToast = "";
+    const updatedKits = configurableUsvbKits.map(kit => {
+      if (kit.id === kitId) {
+        const materialToDelete = kit.materials.find(m => m.id === materialId);
+        materialNameForToast = materialToDelete?.name || "Desconocido";
+        return { ...kit, materials: kit.materials.filter(m => m.id !== materialId) };
+      }
+      return kit;
+    });
+    saveConfigurableUsvbKits(updatedKits);
+    toast({ title: "Material Eliminado del Kit", description: `Material "${materialNameForToast}" eliminado de la plantilla.`});
+  }, [user, configurableUsvbKits]);
   
   const generateAlerts = useCallback(() => {
     if (authLoading || !user) return; 
@@ -1079,7 +1208,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const relevantConsumableMaterials = consumableMaterials.filter(material => accessibleAmbulanceIds.has(material.ambulanceId));
     
     relevantConsumableMaterials.forEach(material => {
-      const expiryDate = new Date(material.expiryDate);
+      const expiryDate = parseISO(material.expiryDate); // Make sure it's a Date object
       const ambulance = allAmbulancesData.find(a=> a.id === material.ambulanceId);
       const ambulanceName = ambulance ? ambulance.name : 'Ambulancia Desconocida';
       const daysUntilExpiry = (expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
@@ -1095,7 +1224,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           severity: 'high',
           createdAt: today.toISOString(),
         });
-        if (configuredEmail) {
+        if (configuredEmail && user?.role === 'coordinador') {
             toast({ title: "ALERTA CRÍTICA (Ambulancia)", description: `${alertMsg} Notificación simulada a ${configuredEmail}.`, variant: "destructive", duration: 10000 });
         }
       } else if (daysUntilExpiry <= 7) {
@@ -1138,7 +1267,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     revisionesDiariasVehiculo, getRevisionDiariaVehiculoByAmbulanceId, saveRevisionDiariaVehiculo,
     getAmbulanceStorageLocations, addAmbulanceStorageLocation, updateAmbulanceStorageLocation, deleteAmbulanceStorageLocation,
     getConfigurableMechanicalReviewItems, addConfigurableMechanicalReviewItem, updateConfigurableMechanicalReviewItem, deleteConfigurableMechanicalReviewItem,
-    usvbKits: usvbKitsData, getUSVBKitById, updateUSVBKitMaterialQuantity,
+    
+    usvbKits: usvbKitsData, 
+    getUSVBKitById, 
+    updateUSVBKitMaterialQuantity,
+    getConfigurableUsvbKits,
+    updateConfigurableUsvbKitDetails,
+    addMaterialToConfigurableUsvbKit,
+    updateMaterialInConfigurableUsvbKit,
+    deleteMaterialFromConfigurableUsvbKit,
+
     inventoryLogs, getInventoryLogsByAmbulanceId,
     getNotificationEmailConfig, setNotificationEmailConfig,
   };

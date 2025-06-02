@@ -15,7 +15,7 @@ import { useAppData } from '@/contexts/AppDataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { Mail, Save, Trash2, AlertTriangle, MapPin, ListChecks } from 'lucide-react';
+import { Mail, Save, Trash2, AlertTriangle, MapPin, ListChecks, PackageSearch } from 'lucide-react';
 import Link from 'next/link';
 
 const settingsSchema = z.object({
@@ -168,6 +168,25 @@ export default function SettingsPage() {
           <CardFooter className="border-t pt-6">
             <Button asChild className="w-full">
               <Link href="/dashboard/settings/mechanical-review-items">Gestionar Ítems de Revisión</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><PackageSearch className="h-5 w-5" /> Plantillas de Kits USVB</CardTitle>
+            <CardDescription>
+              Gestionar los materiales y cantidades ideales para cada kit de la dotación USVB.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+                Define la composición estándar de los kits USVB para un control de stock eficiente.
+            </p>
+          </CardContent>
+          <CardFooter className="border-t pt-6">
+            <Button asChild className="w-full">
+              <Link href="/dashboard/settings/usvb-kits">Gestionar Plantillas de Kits</Link>
             </Button>
           </CardFooter>
         </Card>

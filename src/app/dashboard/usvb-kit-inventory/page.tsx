@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useAppData } from '@/contexts/AppDataContext';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,10 +46,10 @@ const getStockStatusColor = (status?: USVBKitMaterialStatus): string => {
   }
 };
 
-const calculateStockStatus = (material: USVBKitMaterial): USVBKitMaterialStatus => {
-  if (material.quantity <= 0) return 'out';
-  if (material.quantity < material.targetQuantity * 0.5) return 'low'; // Ejemplo: bajo si < 50%
-  if (material.quantity < material.targetQuantity) return 'low'; // O simplemente bajo si no es completo
+const calculateStockStatus = (currentQuantity: number, targetQuantity: number): USVBKitMaterialStatus => {
+  if (currentQuantity <= 0) return 'out';
+  if (currentQuantity < targetQuantity * 0.5) return 'low';
+  if (currentQuantity < targetQuantity) return 'low';
   return 'ok';
 };
 
@@ -60,7 +60,13 @@ type MaterialQuantityValues = z.infer<typeof materialQuantitySchema>;
 
 
 export default function USVBKitInventoryPage() {
-  const { usvbKits, updateUSVBKitMaterialQuantity, getUSVBKitById } = useAppData();
+  const { 
+    usvbKits: operationalKitsData, // This is the operational data with current quantities
+    updateUSVBKitMaterialQuantity, 
+    getUSVBKitById,
+    getConfigurableUsvbKits // This gets the template/config
+  } = useAppData();
+  
   const [selectedKit, setSelectedKit] = useState<USVBKit | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStockStatus, setFilterStockStatus] = useState<'all' | USVBKitMaterialStatus>('all');
@@ -73,15 +79,34 @@ export default function USVBKitInventoryPage() {
   const [editingMaterial, setEditingMaterial] = useState<{ kitId: string; material: USVBKitMaterial } | null>(null);
 
 
+  // Combine operational data with config for display and filtering
+  const kitsForDisplay = useMemo(() => {
+    const configurableKits = getConfigurableUsvbKits(); // Get the latest config
+
+    return operationalKitsData.map(opKit => {
+      const configKit = configurableKits.find(cfg => cfg.id === opKit.id); // Find corresponding config
+      const materialsWithStatusAndTarget = opKit.materials.map(opMaterial => {
+        const configMaterial = configKit?.materials.find(cfgMat => cfgMat.name === opMaterial.name); // Match by name as IDs might differ if reconfigured
+        const targetQuantity = configMaterial?.targetQuantity ?? opMaterial.targetQuantity; // Fallback to opMaterial's target if no config
+        return {
+          ...opMaterial,
+          targetQuantity: targetQuantity,
+          status: calculateStockStatus(opMaterial.quantity, targetQuantity),
+        };
+      });
+      const overallStatus = materialsWithStatusAndTarget.some(m => m.status === 'out') ? 'out' :
+                            materialsWithStatusAndTarget.some(m => m.status === 'low') ? 'low' : 'ok';
+      return { 
+        ...opKit, 
+        materials: materialsWithStatusAndTarget, 
+        overallStatus 
+      };
+    });
+  }, [operationalKitsData, getConfigurableUsvbKits]);
+
+
   const filteredKits = useMemo(() => {
-    return usvbKits
-      .map(kit => {
-        const materialsWithStatus = kit.materials.map(m => ({ ...m, status: calculateStockStatus(m) }));
-        const overallStatus = materialsWithStatus.some(m => m.status === 'out') ? 'out' :
-                              materialsWithStatus.some(m => m.status === 'low') ? 'low' : 'ok';
-        return { ...kit, materials: materialsWithStatus, overallStatus };
-      })
-      .filter(kit => {
+    return kitsForDisplay.filter(kit => {
         const searchTermLower = searchTerm.toLowerCase();
         const matchesSearch =
           kit.name.toLowerCase().includes(searchTermLower) ||
@@ -92,32 +117,38 @@ export default function USVBKitInventoryPage() {
         
         return matchesSearch && matchesStock;
       });
-  }, [usvbKits, searchTerm, filterStockStatus]);
+  }, [kitsForDisplay, searchTerm, filterStockStatus]);
 
-  const handleKitClick = (kit: USVBKit) => {
-    // Recalcular status para el kit seleccionado por si los datos cambiaron
-    const freshKit = getUSVBKitById(kit.id);
-    if(freshKit) {
-        const materialsWithStatus = freshKit.materials.map(m => ({ ...m, status: calculateStockStatus(m) }));
-        setSelectedKit({...freshKit, materials: materialsWithStatus});
+  const handleKitClick = (kitFromDisplay: typeof filteredKits[0]) => {
+    // Find the kit in operationalKitsData to ensure we have the correct base for modification
+    const operationalKit = operationalKitsData.find(ok => ok.id === kitFromDisplay.id);
+    if(operationalKit) {
+        // Re-enrich with target quantities from config for the detail view
+        const configurableKits = getConfigurableUsvbKits();
+        const configKit = configurableKits.find(cfg => cfg.id === operationalKit.id);
+        
+        const materialsForDetail = operationalKit.materials.map(opMaterial => {
+            const configMaterial = configKit?.materials.find(cfgMat => cfgMat.name === opMaterial.name);
+            const targetQuantity = configMaterial?.targetQuantity ?? opMaterial.targetQuantity;
+            return {
+                ...opMaterial,
+                targetQuantity: targetQuantity,
+                status: calculateStockStatus(opMaterial.quantity, targetQuantity)
+            };
+        });
+        setSelectedKit({...operationalKit, materials: materialsForDetail});
         setIsKitDetailOpen(true);
     }
   };
 
   const handleQuantityChange = (kitId: string, materialId: string, change: number) => {
-    const kit = usvbKits.find(k => k.id === kitId);
+    const kit = operationalKitsData.find(k => k.id === kitId); // Use operational data
     const material = kit?.materials.find(m => m.id === materialId);
     if (material) {
       const newQuantity = material.quantity + change;
       updateUSVBKitMaterialQuantity(kitId, materialId, newQuantity);
-      // Actualizar el selectedKit si es el que está abierto
-      if (selectedKit && selectedKit.id === kitId) {
-        const updatedMaterials = selectedKit.materials.map(m =>
-          m.id === materialId ? { ...m, quantity: Math.max(0, newQuantity), status: calculateStockStatus({...m, quantity: Math.max(0, newQuantity)}) } : m
-        );
-        setSelectedKit({ ...selectedKit, materials: updatedMaterials });
-      }
-       toast({ title: "Cantidad Actualizada", description: `Stock de ${material.name} ahora es ${Math.max(0, newQuantity)}.` });
+      // selectedKit will be updated via re-render as operationalKitsData changes
+      toast({ title: "Cantidad Actualizada", description: `Stock de ${material.name} ahora es ${Math.max(0, newQuantity)}.` });
     }
   };
   
@@ -129,18 +160,39 @@ export default function USVBKitInventoryPage() {
   const onSubmitQuantity = (data: MaterialQuantityValues) => {
     if (editingMaterial) {
       updateUSVBKitMaterialQuantity(editingMaterial.kitId, editingMaterial.material.id, data.quantity);
-      // Actualizar selectedKit para reflejar el cambio inmediatamente
-      if (selectedKit && selectedKit.id === editingMaterial.kitId) {
-        const updatedMaterials = selectedKit.materials.map(m =>
-          m.id === editingMaterial.material.id ? { ...m, quantity: data.quantity, status: calculateStockStatus({...m, quantity: data.quantity}) } : m
-        );
-        setSelectedKit({ ...selectedKit, materials: updatedMaterials });
-      }
+      // selectedKit will be updated via re-render
       toast({ title: "Cantidad Guardada", description: `Stock de ${editingMaterial.material.name} es ${data.quantity}.` });
       setEditingMaterial(null);
       reset();
     }
   };
+
+  // Update selectedKit when operationalKitsData changes (e.g., after quantity update)
+  useEffect(() => {
+    if (selectedKit && isKitDetailOpen) {
+      const updatedOperationalKit = operationalKitsData.find(ok => ok.id === selectedKit.id);
+      if (updatedOperationalKit) {
+        const configurableKits = getConfigurableUsvbKits();
+        const configKit = configurableKits.find(cfg => cfg.id === updatedOperationalKit.id);
+        
+        const materialsForDetail = updatedOperationalKit.materials.map(opMaterial => {
+            const configMaterial = configKit?.materials.find(cfgMat => cfgMat.name === opMaterial.name);
+            const targetQuantity = configMaterial?.targetQuantity ?? opMaterial.targetQuantity;
+            return {
+                ...opMaterial,
+                targetQuantity: targetQuantity,
+                status: calculateStockStatus(opMaterial.quantity, targetQuantity)
+            };
+        });
+        setSelectedKit({...updatedOperationalKit, materials: materialsForDetail});
+      } else {
+        // Kit might have been removed, close dialog
+        setIsKitDetailOpen(false);
+        setSelectedKit(null);
+      }
+    }
+  }, [operationalKitsData, selectedKit, isKitDetailOpen, getConfigurableUsvbKits]);
+
 
   const KitCard = ({ kit }: { kit: typeof filteredKits[0] }) => {
     const IconComponent = getLucideIcon(kit.iconName);
@@ -149,8 +201,8 @@ export default function USVBKitInventoryPage() {
         className={cn(
           "cursor-pointer hover:shadow-lg transition-shadow duration-200 flex flex-col",
           GDLR_CARD_RADIUS,
-          GDLR_CARD_GREY_BG, // Light mode card grey
-          DARK_GDLR_CARD_GREY_BG // Dark mode card grey
+          GDLR_CARD_GREY_BG, 
+          DARK_GDLR_CARD_GREY_BG 
         )}
         onClick={() => handleKitClick(kit)}
       >
@@ -259,7 +311,7 @@ export default function USVBKitInventoryPage() {
                 {selectedKit.name} (Espacio {selectedKit.number})
               </DialogTitle>
               <DialogDescription className={cn(GDLR_CARD_GREY_TEXT, DARK_GDLR_CARD_GREY_TEXT, "opacity-80")}>
-                Detalle de materiales y control de stock.
+                Detalle de materiales y control de stock. La dotación ideal se basa en la configuración del sistema.
               </DialogDescription>
             </DialogHeader>
             

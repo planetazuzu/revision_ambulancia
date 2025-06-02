@@ -90,7 +90,7 @@ export interface Space {
   name: string;
 }
 
-export type AlertType = 'review_pending' | 'expiring_soon' | 'expired_material' | 'ampulario_expiring_soon' | 'ampulario_expired_material' | 'cleaning_pending';
+export type AlertType = 'review_pending' | 'expiring_soon' | 'expired_material' | 'ampulario_expiring_soon' | 'ampulario_expired_material' | 'cleaning_pending' | 'daily_check_pending';
 
 export interface Alert {
   id: string;
@@ -151,33 +151,18 @@ export interface RevisionDiariaVehiculo {
   submittedByUserId: string;
 }
 
-export const ambulanceStorageLocations = [
-    "Mochila Principal (Rojo)",
-    "Mochila Vía Aérea (Azul)",
-    "Mochila Circulatorio (Amarillo)",
-    "Cajón Lateral Superior Izq.",
-    "Cajón Lateral Inferior Izq.",
-    "Cajón Lateral Superior Der.",
-    "Cajón Lateral Inferior Der.",
-    "Bolsillos Puerta Trasera",
-    "Compartimento Techo Cabina",
-    "Debajo Asiento Acompañante",
-    "Sin Ubicación Específica"
-] as const;
-
-export type AmbulanceStorageLocation = typeof ambulanceStorageLocations[number];
+export type AmbulanceStorageLocation = string;
 
 
 // --- Tipos para el Módulo de Gestión de Material USVB ---
 export type USVBKitMaterialStatus = 'ok' | 'low' | 'out';
 
 export interface USVBKitMaterial {
-  id: string;
+  id: string; // Identificador único del material DENTRO de un kit específico
   name: string;
-  quantity: number;
-  targetQuantity: number;
+  quantity: number; // Cantidad actual en el kit
+  targetQuantity: number; // Cantidad ideal según la plantilla
   status?: USVBKitMaterialStatus; // Calculado: ok, bajo, agotado
-  // notes?: string; // Opcional para notas específicas del material en el kit
 }
 
 export interface USVBKit {
@@ -186,5 +171,27 @@ export interface USVBKit {
   name: string; // ej. "Espacio 4: EPI"
   iconName: string; // Nombre del icono de lucide-react, ej. "Shield"
   genericImageHint?: string; // Para data-ai-hint, ej. "medical kit"
-  materials: USVBKitMaterial[];
+  materials: USVBKitMaterial[]; // Representa el estado ACTUAL del kit (con quantity actual)
+                                 // La targetQuantity se consultará de la configuración.
+}
+
+
+// --- Tipos para Logs de Inventario ---
+export type InventoryLogAction = 'added' | 'updated' | 'deleted' | 'quantity_changed' | 'status_changed';
+
+export interface InventoryLogEntry {
+  id: string;
+  ambulanceId: string;
+  materialId: string;
+  materialName: string;
+  materialType: 'consumable' | 'non-consumable';
+  action: InventoryLogAction;
+  changeDetails: string; // "Quantity: 5 -> 3", "Status: OK -> Repair"
+  quantityBefore?: number;
+  quantityAfter?: number;
+  statusBefore?: string;
+  statusAfter?: string;
+  userId: string;
+  userName: string;
+  timestamp: string; // ISO Date string
 }
