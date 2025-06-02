@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,7 +20,7 @@ import { useAppData } from '@/contexts/AppDataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ListChecks, PlusCircle, Edit3, Trash2, ArrowLeft, Package, Save, ToyBrick } from 'lucide-react';
+import { AlertTriangle, ListChecks, PlusCircle, Edit3, Trash2, ArrowLeft, Package, Save, ToyBrick, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import Link from 'next/link';
 import * as LucideIcons from 'lucide-react';
 import type { USVBKit, USVBKitMaterial } from '@/types';
@@ -51,7 +51,8 @@ export default function ManageUsvbKitsPage() {
     updateConfigurableUsvbKitDetails,
     addMaterialToConfigurableUsvbKit,
     updateMaterialInConfigurableUsvbKit,
-    deleteMaterialFromConfigurableUsvbKit
+    deleteMaterialFromConfigurableUsvbKit,
+    reorderMaterialInConfigurableUsvbKit
   } = useAppData();
   const { toast } = useToast();
   const router = useRouter();
@@ -126,6 +127,10 @@ export default function ManageUsvbKitsPage() {
   const handleDeleteMaterial = (kitId: string, materialId: string) => {
     deleteMaterialFromConfigurableUsvbKit(kitId, materialId);
   };
+
+  const handleReorderMaterial = (kitId: string, materialId: string, direction: 'up' | 'down') => {
+    reorderMaterialInConfigurableUsvbKit(kitId, materialId, direction);
+  };
   
   if (authLoading || !user) {
     return <div className="p-6 text-center">Cargando...</div>;
@@ -195,22 +200,28 @@ export default function ManageUsvbKitsPage() {
                             <TableRow>
                               <TableHead>Nombre del Material</TableHead>
                               <TableHead className="w-[150px] text-center">Dotación Ideal</TableHead>
-                              <TableHead className="text-right w-[120px]">Acciones</TableHead>
+                              <TableHead className="text-right w-[200px]">Acciones</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {kit.materials.map((material) => (
+                            {kit.materials.map((material, index) => (
                               <TableRow key={material.id}>
                                 <TableCell>{material.name}</TableCell>
                                 <TableCell className="text-center">{material.targetQuantity}</TableCell>
-                                <TableCell className="text-right">
-                                  <Button variant="ghost" size="icon" onClick={() => handleOpenMaterialDialog(kit.id, material)} className="mr-1">
-                                    <Edit3 className="h-4 w-4" /> <span className="sr-only">Editar Material</span>
+                                <TableCell className="text-right space-x-1">
+                                  <Button variant="ghost" size="icon" onClick={() => handleReorderMaterial(kit.id, material.id, 'up')} disabled={index === 0} title="Mover Arriba">
+                                    <ArrowUpCircle className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => handleReorderMaterial(kit.id, material.id, 'down')} disabled={index === kit.materials.length - 1} title="Mover Abajo">
+                                    <ArrowDownCircle className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => handleOpenMaterialDialog(kit.id, material)} title="Editar Material">
+                                    <Edit3 className="h-4 w-4" />
                                   </Button>
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80">
-                                        <Trash2 className="h-4 w-4" /> <span className="sr-only">Eliminar Material</span>
+                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80" title="Eliminar Material">
+                                        <Trash2 className="h-4 w-4" />
                                       </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
@@ -351,3 +362,4 @@ export default function ManageUsvbKitsPage() {
     </div>
   );
 }
+

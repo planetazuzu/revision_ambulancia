@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial, InventoryLogEntry, InventoryLogAction, ChecklistItem, ChecklistItemStatus, AlertType } from '@/types';
+import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial, InventoryLogEntry, InventoryLogAction, ChecklistItem, ChecklistItemStatus, AlertType, CentralInventoryLogEntry } from '@/types';
 // Importar la lista ya no es necesario desde types, se gestiona aquí
 import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo, useCallback } from 'react';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -357,7 +357,7 @@ interface AppDataContextType {
   ambulances: Ambulance[];
   getAmbulanceById: (id: string) => Ambulance | undefined;
   getAmbulanceByName: (name: string) => Ambulance | undefined;
-  addAmbulance: (ambulance: Omit<Ambulance, 'id' | 'mechanicalReviewCompleted' | 'cleaningCompleted' | 'inventoryCompleted'>) => void;
+  addAmbulance: (ambulance: Omit<Ambulance, 'id' | 'mechanicalReviewCompleted' | 'cleaningCompleted' | 'inventoryCompleted' | 'dailyCheckCompleted' | 'lastDailyCheck'>) => void;
   updateAmbulance: (ambulance: Ambulance) => void;
   deleteAmbulance: (id: string) => void;
   updateAmbulanceCheckInDetails: (ambulanceId: string, kilometers: number, userId: string) => void;
@@ -385,12 +385,12 @@ interface AppDataContextType {
   alerts: Alert[];
   generateAlerts: () => void; 
 
-  updateAmbulanceWorkflowStep: (ambulanceId: string, step: 'mechanical' | 'cleaning' | 'inventory', status: boolean) => void;
+  updateAmbulanceWorkflowStep: (ambulanceId: string, step: 'dailyCheck' | 'mechanical' | 'cleaning' | 'inventory', status: boolean) => void;
   getAllAmbulancesCount: () => number;
 
   revisionesDiariasVehiculo: RevisionDiariaVehiculo[];
   getRevisionDiariaVehiculoByAmbulanceId: (ambulanceId: string) => RevisionDiariaVehiculo | undefined;
-  saveRevisionDiariaVehiculo: (check: Omit<RevisionDiariaVehiculo, 'id'>) => void;
+  saveRevisionDiariaVehiculo: (check: Omit<RevisionDiariaVehiculo, 'id'> & { submittedByUserId: string }) => void;
   
   getAmbulanceStorageLocations: () => readonly AmbulanceStorageLocation[];
   addAmbulanceStorageLocation: (location: string) => void;
@@ -413,9 +413,14 @@ interface AppDataContextType {
   addMaterialToConfigurableUsvbKit: (kitId: string, materialData: { name: string; targetQuantity: number }) => void;
   updateMaterialInConfigurableUsvbKit: (kitId: string, materialId: string, updates: { name?: string; targetQuantity?: number }) => void;
   deleteMaterialFromConfigurableUsvbKit: (kitId: string, materialId: string) => void;
+  reorderMaterialInConfigurableUsvbKit: (kitId: string, materialId: string, direction: 'up' | 'down') => void;
+
 
   inventoryLogs: InventoryLogEntry[];
   getInventoryLogsByAmbulanceId: (ambulanceId: string) => InventoryLogEntry[];
+  centralInventoryLogs: CentralInventoryLogEntry[];
+  getCentralInventoryLogs: () => CentralInventoryLogEntry[];
+
 
   getNotificationEmailConfig: () => string | null;
   setNotificationEmailConfig: (email: string | null) => void;
@@ -433,6 +438,7 @@ const generateSVBAmbulances = (): Ambulance[] => {
       licensePlate: `SVB-${numberString}`,
       model: 'Furgoneta SVB',
       year: 2023,
+      dailyCheckCompleted: false,
       mechanicalReviewCompleted: false,
       cleaningCompleted: false,
       inventoryCompleted: false,
@@ -443,25 +449,25 @@ const generateSVBAmbulances = (): Ambulance[] => {
 };
 
 export const initialAmbulances: Ambulance[] = [
-  { id: 'amb001', name: 'Ambulancia 01', licensePlate: 'XYZ 123', model: 'Mercedes Sprinter', year: 2022, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastMechanicalReview: new Date(Date.now() - 5*24*60*60*1000).toISOString(), lastKnownKilometers: 10500, lastCheckInDate: new Date(Date.now() - 5*24*60*60*1000).toISOString() },
-  { id: 'amb002', name: 'Ambulancia 02', licensePlate: 'ABC 789', model: 'Ford Transit', year: 2021, mechanicalReviewCompleted: true, cleaningCompleted: false, inventoryCompleted: false, lastCleaning: new Date(Date.now() - 2*24*60*60*1000).toISOString(), lastKnownKilometers: 22300, lastCheckInDate: new Date(Date.now() - 2*24*60*60*1000).toISOString()  },
-  { id: 'amb003', name: 'Unidad Rápida B1', licensePlate: 'DEF 456', model: 'VW Crafter', year: 2023, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastKnownKilometers: 5200 },
+  { id: 'amb001', name: 'Ambulancia 01', licensePlate: 'XYZ 123', model: 'Mercedes Sprinter', year: 2022, dailyCheckCompleted: false, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastMechanicalReview: new Date(Date.now() - 5*24*60*60*1000).toISOString(), lastKnownKilometers: 10500, lastCheckInDate: new Date(Date.now() - 5*24*60*60*1000).toISOString(), lastDailyCheck: new Date(Date.now() - 25*60*60*1000).toISOString() },
+  { id: 'amb002', name: 'Ambulancia 02', licensePlate: 'ABC 789', model: 'Ford Transit', year: 2021, dailyCheckCompleted: true, lastDailyCheck: new Date().toISOString(), mechanicalReviewCompleted: true, cleaningCompleted: false, inventoryCompleted: false, lastCleaning: new Date(Date.now() - 2*24*60*60*1000).toISOString(), lastKnownKilometers: 22300, lastCheckInDate: new Date(Date.now() - 2*24*60*60*1000).toISOString()  },
+  { id: 'amb003', name: 'Unidad Rápida B1', licensePlate: 'DEF 456', model: 'VW Crafter', year: 2023, dailyCheckCompleted: false, mechanicalReviewCompleted: false, cleaningCompleted: false, inventoryCompleted: false, lastKnownKilometers: 5200 },
   ...generateSVBAmbulances(),
 ];
 
 const initialConsumables: ConsumableMaterial[] = [
     { id: 'cons001', ambulanceId: 'amb001', name: 'Vendas Estériles (paquete 10)', reference: 'BNDG-01', quantity: 50, expiryDate: new Date(Date.now() + 30*24*60*60*1000).toISOString(), storageLocation: "Mochila Principal (Rojo)", minStockLevel: 20 },
     { id: 'cons002', ambulanceId: 'amb001', name: 'Solución Salina 500ml', reference: 'SLN-05', quantity: 2, expiryDate: new Date(Date.now() - 5*24*60*60*1000).toISOString(), storageLocation: "Mochila Circulatorio (Amarillo)", minStockLevel: 5 },
-    { id: 'cons003', ambulanceId: 'amb002', name: 'Guantes Estériles Talla M (Caja)', reference: 'GLV-M', quantity: 5, expiryDate: new Date(Date.now() + 5*24*60*60*1000).toISOString(), storageLocation: "Cajón Lateral Superior Izq." },
+    { id: 'cons003', ambulanceId: 'amb002', name: 'Guantes Estériles Talla M (Caja)', reference: 'GLV-M', quantity: 5, expiryDate: new Date(Date.now() + 5*24*60*60*1000).toISOString(), storageLocation: "Cajón Lateral Superior Izq.", minStockLevel: 2 },
     { id: 'cons004', ambulanceId: 'amb001', name: 'Mascarilla RCP Adulto', reference: 'RCP-AD', quantity: 1, expiryDate: new Date(Date.now() + 100*24*60*60*1000).toISOString(), storageLocation: "Mochila Vía Aérea (Azul)", minStockLevel: 2 },
-    { id: 'cons005', ambulanceId: 'amb001', name: 'Apósitos Adhesivos (caja)', reference: 'APOS-MIX', quantity: 1, expiryDate: new Date(Date.now() + 60*24*60*60*1000).toISOString() },
+    { id: 'cons005', ambulanceId: 'amb001', name: 'Apósitos Adhesivos (caja)', reference: 'APOS-MIX', quantity: 1, expiryDate: new Date(Date.now() + 60*24*60*60*1000).toISOString(), minStockLevel: 1 },
 ];
 
 const initialNonConsumables: NonConsumableMaterial[] = [
-    { id: 'noncons001', ambulanceId: 'amb001', name: 'Desfibrilador Externo Automático (DEA)', serialNumber: 'DEFIB-A001', status: 'Operacional', storageLocation: "Mochila Principal (Rojo)" },
-    { id: 'noncons002', ambulanceId: 'amb002', name: 'Camilla Principal Ruedas', serialNumber: 'STRCH-B012', status: 'Necesita Reparación', storageLocation: "Compartimento Principal Ambulancia" },
-    { id: 'noncons003', ambulanceId: 'amb001', name: 'Pulsioxímetro Portátil', serialNumber: 'PULSI-X07', status: 'Operacional', storageLocation: "Mochila Principal (Rojo)" },
-    { id: 'noncons004', ambulanceId: 'amb001', name: 'Tabla Espinal Larga', serialNumber: 'SPNL-L003', status: 'Operacional' },
+    { id: 'noncons001', ambulanceId: 'amb001', name: 'Desfibrilador Externo Automático (DEA)', serialNumber: 'DEFIB-A001', status: 'Operacional', storageLocation: "Mochila Principal (Rojo)", minStockLevel: 1 },
+    { id: 'noncons002', ambulanceId: 'amb002', name: 'Camilla Principal Ruedas', serialNumber: 'STRCH-B012', status: 'Necesita Reparación', storageLocation: "Compartimento Principal Ambulancia", minStockLevel: 1 },
+    { id: 'noncons003', ambulanceId: 'amb001', name: 'Pulsioxímetro Portátil', serialNumber: 'PULSI-X07', status: 'Operacional', storageLocation: "Mochila Principal (Rojo)", minStockLevel: 1 },
+    { id: 'noncons004', ambulanceId: 'amb001', name: 'Tabla Espinal Larga', serialNumber: 'SPNL-L003', status: 'Operacional', minStockLevel: 1 },
 ];
 
 
@@ -479,13 +485,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [revisionesDiariasVehiculo, setRevisionesDiariasVehiculo] = useState<RevisionDiariaVehiculo[]>([]);
   
   // USVB Kits: `configurableUsvbKits` is the template/config, `usvbKitsData` is operational data.
-  const [configurableUsvbKits, setConfigurableUsvbKits] = useState<USVBKit[]>(generateInitialConfigurableUsvbKits());
+  const [configurableUsvbKits, setConfigurableUsvbKitsState] = useState<USVBKit[]>(generateInitialConfigurableUsvbKits());
   const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>([]); // Operational data
 
   const [inventoryLogs, setInventoryLogs] = useState<InventoryLogEntry[]>([]);
+  const [centralInventoryLogsState, setCentralInventoryLogsState] = useState<CentralInventoryLogEntry[]>([]);
   const [notificationEmailConfig, setNotificationEmailConfigState] = useState<string | null>(null);
   const [configurableAmbulanceStorageLocations, setConfigurableAmbulanceStorageLocations] = useState<string[]>(defaultInitialAmbulanceStorageLocations);
   const [configurableMechanicalReviewItems, setConfigurableMechanicalReviewItems] = useState<{name: string}[]>(defaultInitialMechanicalReviewItems);
+
+  const setConfigurableUsvbKits = useCallback((newKits: USVBKit[] | ((prevKits: USVBKit[]) => USVBKit[])) => {
+    const kitsToSave = typeof newKits === 'function' ? newKits(configurableUsvbKits) : newKits;
+    setConfigurableUsvbKitsState(kitsToSave);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LOCAL_STORAGE_CONFIG_USVB_KITS, JSON.stringify(kitsToSave));
+    }
+  }, [configurableUsvbKits]);
 
   // Sync operational usvbKitsData with configurableUsvbKits
   useEffect(() => {
@@ -523,10 +538,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       else localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(defaultInitialMechanicalReviewItems));
 
       const storedUsvbKitsConfig = localStorage.getItem(LOCAL_STORAGE_CONFIG_USVB_KITS);
-      if (storedUsvbKitsConfig) setConfigurableUsvbKits(JSON.parse(storedUsvbKitsConfig));
+      if (storedUsvbKitsConfig) setConfigurableUsvbKitsState(JSON.parse(storedUsvbKitsConfig)); // Use setConfigurableUsvbKitsState to avoid direct state mutation warning
       else localStorage.setItem(LOCAL_STORAGE_CONFIG_USVB_KITS, JSON.stringify(generateInitialConfigurableUsvbKits()));
     }
   }, []);
+
+  const getCentralInventoryLogs = useCallback(() => {
+    return centralInventoryLogsState.sort((a,b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime());
+  }, [centralInventoryLogsState]);
+
+  const addCentralInventoryLog = useCallback((logEntry: Omit<CentralInventoryLogEntry, 'id' | 'timestamp' | 'userId' | 'userName'>) => {
+    setCentralInventoryLogsState(prevLogs => {
+      const newLog: CentralInventoryLogEntry = {
+        ...logEntry,
+        id: `cent-log-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        timestamp: new Date().toISOString(),
+        // userId and userName would be set here if available from a real backend session
+      };
+      return [newLog, ...prevLogs];
+    });
+  }, []);
+
 
   const getNotificationEmailConfig = useCallback(() => {
     if (user?.role === 'coordinador') return notificationEmailConfig;
@@ -712,7 +744,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [inventoryLogs]);
 
 
-  const addAmbulance = (ambulanceData: Omit<Ambulance, 'id' | 'mechanicalReviewCompleted' | 'cleaningCompleted' | 'inventoryCompleted'>) => {
+  const addAmbulance = (ambulanceData: Omit<Ambulance, 'id' | 'mechanicalReviewCompleted' | 'cleaningCompleted' | 'inventoryCompleted' | 'dailyCheckCompleted' | 'lastDailyCheck'>) => {
     if (user?.role !== 'coordinador') {
       console.warn("Intento no autorizado de añadir ambulancia por usuario no coordinador.");
       return;
@@ -720,6 +752,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const newAmbulance: Ambulance = {
       ...ambulanceData,
       id: `amb${String(Date.now()).slice(-4)}${Math.floor(Math.random()*100)}`,
+      dailyCheckCompleted: false,
       mechanicalReviewCompleted: false,
       cleaningCompleted: false,
       inventoryCompleted: false,
@@ -917,7 +950,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       materialData.name,
       'non-consumable',
       'added',
-      `Añadido. Estado: ${materialData.status}. N/S: ${materialData.serialNumber}. Ubicación: ${materialData.storageLocation || 'N/D'}.`,
+      `Añadido. Estado: ${materialData.status}. N/S: ${materialData.serialNumber}. Ubicación: ${materialData.storageLocation || 'N/D'}. Cant. Mín: ${materialData.minStockLevel ?? 'N/D'}`,
       undefined, undefined, undefined, materialData.status
     );
   };
@@ -943,6 +976,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
     if (originalMaterial.storageLocation !== updatedMaterial.storageLocation) {
       detailsArray.push(`Ubicación: "${originalMaterial.storageLocation || 'N/D'}" -> "${updatedMaterial.storageLocation || 'N/D'}"`);
+    }
+     if (originalMaterial.minStockLevel !== updatedMaterial.minStockLevel) {
+      detailsArray.push(`Cant. Mín: ${originalMaterial.minStockLevel ?? 'N/D'} -> ${updatedMaterial.minStockLevel ?? 'N/D'}`);
     }
     
     if (detailsArray.length > 0) {
@@ -971,12 +1007,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       materialToDelete.name,
       'non-consumable',
       'deleted',
-      `Eliminado. Estado: ${materialToDelete.status}. N/S: ${materialToDelete.serialNumber}. Ubicación: ${materialToDelete.storageLocation || 'N/D'}.`,
+      `Eliminado. Estado: ${materialToDelete.status}. N/S: ${materialToDelete.serialNumber}. Ubicación: ${materialToDelete.storageLocation || 'N/D'}. Cant. Mín: ${materialToDelete.minStockLevel ?? 'N/D'}`,
       undefined, undefined, materialToDelete.status, undefined
     );
   };
 
-  const updateAmbulanceWorkflowStep = (ambulanceId: string, step: 'mechanical' | 'cleaning' | 'inventory', status: boolean) => {
+  const updateAmbulanceWorkflowStep = (ambulanceId: string, step: 'dailyCheck' | 'mechanical' | 'cleaning' | 'inventory', status: boolean) => {
     if (user?.role !== 'coordinador' && (user?.role === 'usuario' && user?.assignedAmbulanceId !== ambulanceId)) {
        console.warn("Intento no autorizado de actualizar paso de flujo de trabajo.");
        return;
@@ -984,24 +1020,36 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setAllAmbulancesData(prev => prev.map(amb => {
       if (amb.id === ambulanceId) {
         const updatedAmb = {...amb};
-        if (step === 'mechanical') updatedAmb.mechanicalReviewCompleted = status;
-        if (step === 'cleaning') updatedAmb.cleaningCompleted = status;
-        if (step === 'inventory') {
-            updatedAmb.inventoryCompleted = status;
-            if (status) { 
-                updatedAmb.lastInventoryCheck = new Date().toISOString();
-                
+        if (step === 'dailyCheck') {
+            updatedAmb.dailyCheckCompleted = status;
+            if (!status) { // if daily check is undone, reset all subsequent steps
                 updatedAmb.mechanicalReviewCompleted = false;
                 updatedAmb.cleaningCompleted = false;
                 updatedAmb.inventoryCompleted = false;
             }
-        } else { 
-            if (step === 'mechanical' && !status) {
-              updatedAmb.cleaningCompleted = false;
-              updatedAmb.inventoryCompleted = false;
+        }
+        if (step === 'mechanical') {
+            updatedAmb.mechanicalReviewCompleted = status;
+            if (!status) { // if mechanical is undone, reset cleaning and inventory
+                updatedAmb.cleaningCompleted = false;
+                updatedAmb.inventoryCompleted = false;
             }
-            if (step === 'cleaning' && !status) {
-              updatedAmb.inventoryCompleted = false;
+        }
+        if (step === 'cleaning') {
+            updatedAmb.cleaningCompleted = status;
+            if (!status) { // if cleaning is undone, reset inventory
+                updatedAmb.inventoryCompleted = false;
+            }
+        }
+        if (step === 'inventory') {
+            updatedAmb.inventoryCompleted = status;
+            if (status) { 
+                updatedAmb.lastInventoryCheck = new Date().toISOString();
+                // Reset all steps for next cycle
+                updatedAmb.dailyCheckCompleted = false;
+                updatedAmb.mechanicalReviewCompleted = false;
+                updatedAmb.cleaningCompleted = false;
+                updatedAmb.inventoryCompleted = false; // This will be immediately set to false for the new cycle
             }
         }
         return updatedAmb;
@@ -1019,7 +1067,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return checksForAmbulance.sort((a, b) => new Date(b.checkDate).getTime() - new Date(a.checkDate).getTime())[0];
   };
 
-  const saveRevisionDiariaVehiculo = (checkData: Omit<RevisionDiariaVehiculo, 'id'>) => {
+  const saveRevisionDiariaVehiculo = (checkData: Omit<RevisionDiariaVehiculo, 'id'> & { submittedByUserId: string }) => {
     if (!user) {
         console.warn("Usuario no autenticado intentando guardar revisión diaria.");
         return;
@@ -1033,7 +1081,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const newCheck: RevisionDiariaVehiculo = {
       ...checkData,
       id: `rdv-${Date.now()}`,
-      submittedByUserId: user.id,
     };
 
     if (existingCheckIndex > -1) {
@@ -1045,6 +1092,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } else {
       setRevisionesDiariasVehiculo(prev => [newCheck, ...prev]);
     }
+    // After saving, update the ambulance's daily check status and last check date
+    setAllAmbulancesData(prevAmbs => prevAmbs.map(amb => 
+      amb.id === checkData.ambulanceId 
+        ? { ...amb, dailyCheckCompleted: true, lastDailyCheck: checkData.checkDate }
+        : amb
+    ));
+    updateAmbulanceWorkflowStep(checkData.ambulanceId, 'dailyCheck', true);
   };
   
   // --- USVB Kit (Operational Data) Management ---
@@ -1073,57 +1127,64 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return configurableUsvbKits;
   }, [configurableUsvbKits]);
 
-  const saveConfigurableUsvbKits = (kits: USVBKit[]) => {
-    setConfigurableUsvbKits(kits);
+  const saveConfigurableUsvbKits = useCallback((kits: USVBKit[]) => {
+    setConfigurableUsvbKitsState(kits);
     localStorage.setItem(LOCAL_STORAGE_CONFIG_USVB_KITS, JSON.stringify(kits));
-  };
+  }, []);
+
 
   const updateConfigurableUsvbKitDetails = useCallback((kitId: string, details: Pick<USVBKit, 'name' | 'iconName' | 'genericImageHint'>) => {
     if (user?.role !== 'coordinador') return;
-    const updatedKits = configurableUsvbKits.map(kit => 
-      kit.id === kitId ? { ...kit, ...details } : kit
-    );
-    saveConfigurableUsvbKits(updatedKits);
+    setConfigurableUsvbKits(prevKits => {
+        const updatedKits = prevKits.map(kit => 
+          kit.id === kitId ? { ...kit, ...details } : kit
+        );
+        return updatedKits;
+    });
     toast({ title: "Detalles del Kit Actualizados", description: `Se han actualizado los detalles para ${details.name}.`});
-  }, [user, configurableUsvbKits, toast]);
+  }, [user, setConfigurableUsvbKits, toast]);
 
   const addMaterialToConfigurableUsvbKit = useCallback((kitId: string, materialData: { name: string; targetQuantity: number }) => {
     if (user?.role !== 'coordinador') return;
+    
+    let materialExistsInKit = false;
     const updatedKits = configurableUsvbKits.map(kit => {
       if (kit.id === kitId) {
-        // Check if material with the same name already exists in this kit's config
-        const materialExists = kit.materials.some(m => m.name.toLowerCase() === materialData.name.toLowerCase());
-        if (materialExists) {
-          toast({ title: "Error", description: `El material "${materialData.name}" ya existe en este kit.`, variant: "destructive" });
-          return kit; // Return kit unmodified
+        if (kit.materials.some(m => m.name.toLowerCase() === materialData.name.toLowerCase())) {
+          materialExistsInKit = true;
+          return kit; 
         }
         const newMaterial: USVBKitMaterial = {
           id: `usvb-kit${kit.number}-matcfg-${Date.now()}-${materialData.name.replace(/\s+/g, '-').toLowerCase().substring(0,30)}`,
           name: materialData.name,
           targetQuantity: materialData.targetQuantity,
-          quantity: materialData.targetQuantity, // In config, quantity is usually same as target
+          quantity: materialData.targetQuantity, 
         };
         return { ...kit, materials: [...kit.materials, newMaterial] };
       }
       return kit;
     });
-    // Only save if no error was thrown (i.e., kit was actually modified)
-    if (!configurableUsvbKits.find(kit => kit.id === kitId)?.materials.some(m => m.name.toLowerCase() === materialData.name.toLowerCase())) {
-        saveConfigurableUsvbKits(updatedKits);
-        toast({ title: "Material Añadido al Kit", description: `"${materialData.name}" añadido a la plantilla del kit.`});
+
+    if (materialExistsInKit) {
+      toast({ title: "Error", description: `El material "${materialData.name}" ya existe en este kit.`, variant: "destructive" });
+    } else {
+      setConfigurableUsvbKits(updatedKits);
+      toast({ title: "Material Añadido al Kit", description: `"${materialData.name}" añadido a la plantilla del kit.`});
     }
-  }, [user, configurableUsvbKits, toast]);
+  }, [user, configurableUsvbKits, setConfigurableUsvbKits, toast]);
 
   const updateMaterialInConfigurableUsvbKit = useCallback((kitId: string, materialId: string, updates: { name?: string; targetQuantity?: number }) => {
     if (user?.role !== 'coordinador') return;
+    
+    let nameConflict = false;
     let materialNameForToast = "";
+
     const updatedKits = configurableUsvbKits.map(kit => {
       if (kit.id === kitId) {
-        // Check for name conflict if name is being updated
         if (updates.name) {
             const existingMaterialWithNewName = kit.materials.find(m => m.id !== materialId && m.name.toLowerCase() === updates.name!.toLowerCase());
             if (existingMaterialWithNewName) {
-                toast({ title: "Error", description: `Ya existe un material llamado "${updates.name}" en este kit.`, variant: "destructive" });
+                nameConflict = true;
                 return kit; // Return kit unmodified to prevent update
             }
         }
@@ -1132,7 +1193,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           materials: kit.materials.map(m => {
             if (m.id === materialId) {
               materialNameForToast = updates.name || m.name;
-              return { ...m, ...updates, quantity: updates.targetQuantity ?? m.quantity }; // Update quantity if targetQuantity changes
+              return { ...m, ...updates, quantity: updates.targetQuantity ?? m.quantity };
             }
             return m;
           }),
@@ -1140,14 +1201,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       return kit;
     });
-    // Check if an update actually happened (e.g. no name conflict)
-    const originalKit = configurableUsvbKits.find(k => k.id === kitId);
-    const updatedKit = updatedKits.find(k => k.id === kitId);
-    if (JSON.stringify(originalKit) !== JSON.stringify(updatedKit)) {
-        saveConfigurableUsvbKits(updatedKits);
+
+    if (nameConflict) {
+        toast({ title: "Error", description: `Ya existe un material llamado "${updates.name}" en este kit.`, variant: "destructive" });
+    } else {
+        setConfigurableUsvbKits(updatedKits);
         toast({ title: "Material del Kit Actualizado", description: `Material "${materialNameForToast}" actualizado en la plantilla.`});
     }
-  }, [user, configurableUsvbKits, toast]);
+  }, [user, configurableUsvbKits, setConfigurableUsvbKits, toast]);
+
 
   const deleteMaterialFromConfigurableUsvbKit = useCallback((kitId: string, materialId: string) => {
     if (user?.role !== 'coordinador') return;
@@ -1160,10 +1222,47 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       return kit;
     });
-    saveConfigurableUsvbKits(updatedKits);
+    setConfigurableUsvbKits(updatedKits);
     toast({ title: "Material Eliminado del Kit", description: `Material "${materialNameForToast}" eliminado de la plantilla.`});
-  }, [user, configurableUsvbKits, toast]);
+  }, [user, configurableUsvbKits, setConfigurableUsvbKits, toast]);
   
+  const reorderMaterialInConfigurableUsvbKit = useCallback((kitId: string, materialId: string, direction: 'up' | 'down') => {
+    if (user?.role !== 'coordinador') return;
+
+    setConfigurableUsvbKits(prevKits => {
+      const newKits = prevKits.map(kit => {
+        if (kit.id === kitId) {
+          const materialIndex = kit.materials.findIndex(m => m.id === materialId);
+          if (materialIndex === -1) return kit; // Material not found
+
+          const newMaterials = [...kit.materials];
+          const itemToMove = newMaterials[materialIndex];
+
+          if (direction === 'up' && materialIndex > 0) {
+            newMaterials.splice(materialIndex, 1);
+            newMaterials.splice(materialIndex - 1, 0, itemToMove);
+          } else if (direction === 'down' && materialIndex < newMaterials.length - 1) {
+            newMaterials.splice(materialIndex, 1);
+            newMaterials.splice(materialIndex + 1, 0, itemToMove);
+          } else {
+            return kit; // Cannot move further up or down
+          }
+          return { ...kit, materials: newMaterials };
+        }
+        return kit;
+      });
+      // Only save to localStorage if there was an actual change (prevents unnecessary writes if item can't move)
+      const originalKit = prevKits.find(k => k.id === kitId);
+      const changedKit = newKits.find(k => k.id === kitId);
+      if (originalKit && changedKit && JSON.stringify(originalKit.materials) !== JSON.stringify(changedKit.materials)) {
+        localStorage.setItem(LOCAL_STORAGE_CONFIG_USVB_KITS, JSON.stringify(newKits));
+        toast({ title: "Orden de Materiales Actualizado", description: `Se ha reordenado un material en el kit ${changedKit.name}.` });
+      }
+      return newKits;
+    });
+  }, [user, setConfigurableUsvbKits, toast]);
+
+
   const generateAlerts = useCallback(() => {
     if (authLoading || !user) return; 
     const newAlerts: Alert[] = [];
@@ -1172,53 +1271,73 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
 
     accessibleAmbulances.forEach(ambulance => {
-      if (!ambulance.mechanicalReviewCompleted && (!ambulance.lastMechanicalReview || new Date(ambulance.lastMechanicalReview) < new Date(today.getTime() - 14*24*60*60*1000) )) {
+        // Daily Check Alert
+        if (!ambulance.dailyCheckCompleted) {
+            newAlerts.push({
+                id: `alert-dailycheck-${ambulance.id}`,
+                type: 'daily_check_pending',
+                message: `Revisión Diaria del Vehículo pendiente para ${ambulance.name}. Última: ${ambulance.lastDailyCheck ? format(parseISO(ambulance.lastDailyCheck), 'PPP', { locale: es }) : 'Nunca'}`,
+                ambulanceId: ambulance.id,
+                severity: 'medium',
+                createdAt: today.toISOString(),
+            });
+        }
+
+      // Mechanical Review Alert
+      if (ambulance.dailyCheckCompleted && !ambulance.mechanicalReviewCompleted) {
         newAlerts.push({
           id: `alert-mr-${ambulance.id}`,
           type: 'review_pending',
-          message: `Revisión mecánica pendiente para ${ambulance.name}. Última revisión: ${ambulance.lastMechanicalReview ? format(new Date(ambulance.lastMechanicalReview), 'PPP', { locale: es }) : 'Nunca'}`,
+          message: `Revisión mecánica pendiente para ${ambulance.name}.`,
           ambulanceId: ambulance.id,
           severity: 'medium',
           createdAt: today.toISOString(),
         });
       }
-       if (ambulance.mechanicalReviewCompleted && !ambulance.cleaningCompleted && (!ambulance.lastCleaning || new Date(ambulance.lastCleaning) < new Date(today.getTime() - 7*24*60*60*1000) )) {
+      // Cleaning Alert
+       if (ambulance.dailyCheckCompleted && ambulance.mechanicalReviewCompleted && !ambulance.cleaningCompleted) {
         newAlerts.push({
           id: `alert-cl-${ambulance.id}`,
           type: 'cleaning_pending', 
-          message: `Limpieza pendiente para ${ambulance.name}. Última limpieza: ${ambulance.lastCleaning ? format(new Date(ambulance.lastCleaning), 'PPP', { locale: es }) : 'Nunca'}`,
+          message: `Limpieza pendiente para ${ambulance.name}.`,
           ambulanceId: ambulance.id,
           severity: 'medium',
           createdAt: today.toISOString(),
         });
       }
 
-      const lastDailyCheck = getRevisionDiariaVehiculoByAmbulanceId(ambulance.id);
-      const twentyFourHoursAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-      if (!lastDailyCheck || parseISO(lastDailyCheck.checkDate) < twentyFourHoursAgo) {
-         newAlerts.push({
-          id: `alert-dailycheck-${ambulance.id}`,
-          type: 'daily_check_pending',
-          message: `Revisión Diaria del Vehículo pendiente para ${ambulance.name}. Última: ${lastDailyCheck ? format(parseISO(lastDailyCheck.checkDate), 'PPP', { locale: es }) : 'Nunca'}`,
-          ambulanceId: ambulance.id,
-          severity: 'medium',
-          createdAt: today.toISOString(),
-        });
-      }
-
-      // Low Stock Alerts for Ambulance Inventory
+      // Low Stock Alerts for Ambulance Consumables
       const ambulanceConsumables = getConsumableMaterialsByAmbulanceId(ambulance.id);
       ambulanceConsumables.forEach(material => {
         if (material.minStockLevel !== undefined && material.quantity <= material.minStockLevel) {
           newAlerts.push({
-            id: `alert-lowstock-amb-${material.id}`,
+            id: `alert-lowstock-amb-cons-${material.id}`, // Unique ID for consumable low stock
             type: 'low_stock_ambulance',
-            message: `Stock bajo: ${material.name} en ${ambulance.name}. Actual: ${material.quantity}, Mín: ${material.minStockLevel}.`,
+            message: `Stock bajo (Consumible): ${material.name} en ${ambulance.name}. Actual: ${material.quantity}, Mín: ${material.minStockLevel}.`,
             ambulanceId: ambulance.id,
             materialId: material.id,
-            severity: material.quantity === 0 ? 'high' : 'medium',
+            severity: material.quantity === 0 && material.minStockLevel > 0 ? 'high' : 'medium',
             createdAt: today.toISOString(),
           });
+        }
+      });
+
+      // Low Stock/Status Alerts for Ambulance Non-Consumables
+      const ambulanceNonConsumables = getNonConsumableMaterialsByAmbulanceId(ambulance.id);
+      ambulanceNonConsumables.forEach(material => {
+        if (material.minStockLevel !== undefined) {
+          const currentQuantity = material.status === 'Operacional' ? 1 : 0; // Effective quantity
+          if (currentQuantity < material.minStockLevel) {
+             newAlerts.push({
+              id: `alert-lowstock-amb-noncons-${material.id}`, // Unique ID for non-consumable low stock/status
+              type: 'low_stock_ambulance', // Can use the same type, message will differ
+              message: `Alerta Equipo (No Consumible): ${material.name} en ${ambulance.name}. Estado: ${material.status}. Mín. Esperado: ${material.minStockLevel}.`,
+              ambulanceId: ambulance.id,
+              materialId: material.id,
+              severity: currentQuantity === 0 ? 'high' : 'medium', // High if missing/not operational, medium if somehow present but under a >1 minStockLevel
+              createdAt: today.toISOString(),
+            });
+          }
         }
       });
 
@@ -1228,10 +1347,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const relevantConsumableMaterials = consumableMaterials.filter(material => accessibleAmbulanceIds.has(material.ambulanceId));
     
     relevantConsumableMaterials.forEach(material => {
-      const expiryDate = parseISO(material.expiryDate); // Make sure it's a Date object
+      const expiryDate = parseISO(material.expiryDate); 
       const ambulance = allAmbulancesData.find(a=> a.id === material.ambulanceId);
       const ambulanceName = ambulance ? ambulance.name : 'Ambulancia Desconocida';
-      const daysUntilExpiry = differenceInDays(expiryDate, today); // Using differenceInDays from date-fns
+      const daysUntilExpiry = differenceInDays(expiryDate, today); 
 
 
       if (daysUntilExpiry < 0) {
@@ -1248,7 +1367,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (configuredEmail && user?.role === 'coordinador') {
             toast({ title: "ALERTA CRÍTICA (Ambulancia)", description: `${alertMsg} Notificación simulada a ${configuredEmail}.`, variant: "destructive", duration: 10000 });
         }
-      } else if (daysUntilExpiry <= 7) { // Keep this at 7 days for expiry, or adjust if needed (original was 7)
+      } else if (daysUntilExpiry <= 7) { 
         newAlerts.push({
           id: `alert-expsoon-${material.id}`,
           type: 'expiring_soon',
@@ -1262,7 +1381,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
     setAlerts(newAlerts);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user, accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, allAmbulancesData, getNotificationEmailConfig, revisionesDiariasVehiculo, getConsumableMaterialsByAmbulanceId, toast]); 
+  }, [authLoading, user, accessibleAmbulances, consumableMaterials, nonConsumableMaterials, mechanicalReviews, cleaningLogs, allAmbulancesData, getNotificationEmailConfig, revisionesDiariasVehiculo, getConsumableMaterialsByAmbulanceId, getNonConsumableMaterialsByAmbulanceId, toast]); 
 
   useEffect(() => {
     if (!authLoading) {
@@ -1297,8 +1416,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     addMaterialToConfigurableUsvbKit,
     updateMaterialInConfigurableUsvbKit,
     deleteMaterialFromConfigurableUsvbKit,
+    reorderMaterialInConfigurableUsvbKit,
 
     inventoryLogs, getInventoryLogsByAmbulanceId,
+    centralInventoryLogs: centralInventoryLogsState, getCentralInventoryLogs, // exposed for API route
+    addCentralInventoryLog, // Added for direct use by API routes
     getNotificationEmailConfig, setNotificationEmailConfig,
   };
 
@@ -1316,3 +1438,4 @@ export function useAppData() {
   }
   return context;
 }
+
