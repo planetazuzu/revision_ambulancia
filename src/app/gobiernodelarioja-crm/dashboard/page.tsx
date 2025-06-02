@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart, Users, Activity, DollarSign } from "lucide-react";
+import { Users, Activity, DollarSign, BarChart } from "lucide-react";
 import dynamic from 'next/dynamic';
 import { ResponsiveContainer, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import React from 'react';
@@ -16,6 +16,16 @@ const chartData = [
   { name: 'May', 'Nuevos Clientes': 60, 'Ingresos (€)': 4800 },
   { name: 'Jun', 'Nuevos Clientes': 23, 'Ingresos (€)': 3800 },
 ];
+import {
+ LineChart,
+ Line,
+ Tooltip,
+ Legend,
+
+} from "recharts";
+
+// Import LineChart from recharts
+
 
 const HomeIcon = dynamic(() => import('lucide-react').then((mod) => mod.Home), { ssr: false });
 
@@ -23,8 +33,8 @@ const HomeIcon = dynamic(() => import('lucide-react').then((mod) => mod.Home), {
 const kpiData = [
   { title: "Nuevos Clientes (Mes)", value: "85", icon: Users, change: "+15%", changeType: "positive" },
   { title: "Proyectos Activos", value: "120", icon: Activity, change: "+5", changeType: "positive" },
-  { title: "Ingresos (Mes)", value: "€12,450", icon: DollarSign, change: "-2.3%", changeType: "negative" },
-  { title: "Tasa de Conversión", value: "25%", icon: BarChart, change: "+1.2%", changeType: "positive" },
+  { title: "Ingresos (Mes)", value: "€12,450", icon: DollarSign, change: "-2.3%", changeType: "negative" },import { LineChart } from 'recharts';
+  { title: "Tasa de Conversión", value: "25%", icon: BarChart, onchange: "+1.2%", changeType: "positive" },
 ];
 
 export default function DashboardCrmPage() {
@@ -56,30 +66,26 @@ export default function DashboardCrmPage() {
       </div>
 
       {/* Gráfico de Barras */}
-      <Card className="col-span-1 lg:col-span-2 card-rioja-custom">
+      <Card className="col-span-4">
         <CardHeader>
-          <CardTitle style={{ color: 'hsl(var(--card-foreground-rioja))'}}>Rendimiento Mensual</CardTitle>
-          <CardDescription style={{ color: 'hsl(var(--muted-foreground-rioja))'}}>Nuevos clientes e ingresos generados en los últimos 6 meses.</CardDescription>
+          <CardTitle>Estadísticas de Clientes e Ingresos</CardTitle>
+          <CardDescription>
+            Datos de nuevos clientes e ingresos mensuales.
+          </CardDescription>
         </CardHeader>
         <CardContent className="pl-2">
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border-rioja))" />
-              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground-rioja))" />
-              <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground-rioja))" />
-              <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground-rioja))" />
-              <RechartsTooltip
-                contentStyle={{ 
-                    backgroundColor: 'hsl(var(--popover-rioja))', 
-                    borderColor: 'hsl(var(--border-rioja))',
-                    color: 'hsl(var(--popover-foreground-rioja))'
-                }}
-                labelStyle={{ color: 'hsl(var(--popover-foreground-rioja))' }}
-              />
-              <Legend wrapperStyle={{ color: 'hsl(var(--muted-foreground-rioja))' }}/>
-              <Bar yAxisId="left" dataKey="Nuevos Clientes" fill="hsl(var(--primary-rioja))" radius={[4, 4, 0, 0]} />
-              <Bar yAxisId="right" dataKey="Ingresos (€)" fill="hsl(var(--secondary-rioja))" radius={[4, 4, 0, 0]} />
-            </BarChart>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="Nuevos Clientes" stroke="#8884d8" />
+              <Line type="monotone" dataKey="Ingresos (€)" stroke="#82ca9d" />
+              /&gt;
+             
+            </LineChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
