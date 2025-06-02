@@ -1,15 +1,16 @@
 
 "use client";
 
-import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial, InventoryLogEntry, InventoryLogAction } from '@/types';
-import { ambulanceStorageLocations } from '@/types'; // Importar la lista
+import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial, InventoryLogEntry, InventoryLogAction, ChecklistItem, ChecklistItemStatus } from '@/types';
+// Importar la lista ya no es necesario desde types, se gestiona aquí
 import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale'; 
+import { es } from 'date-fns/locale';
 import { useAuth } from './AuthContext';
+import { toast } from '@/hooks/use-toast'; // Asegúrate que toast está disponible
 
 // --- USVB Kit Data Transformation ---
-
+// ... (código de USVB Kits se mantiene igual, omitido por brevedad)
 const rawUSVBKitData: { [key: number]: string[] } = {
   1: ["Mochila pediátrica"],  
   2: ["Mochila adulto"],  
@@ -298,6 +299,57 @@ const processedUSVBKits: USVBKit[] = Object.entries(rawUSVBKitData)
   })
   .sort((a, b) => a.number - b.number);
 
+const LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS = 'ambuConfigurableAmbulanceLocations';
+const LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS = 'ambuConfigurableMechReviewItems'; // Nueva clave
+
+const defaultInitialAmbulanceStorageLocations: AmbulanceStorageLocation[] = [
+    "Mochila Principal (Rojo)", "Mochila Vía Aérea (Azul)", "Mochila Circulatorio (Amarillo)",
+    "Cajón Lateral Superior Izq.", "Cajón Lateral Inferior Izq.", "Cajón Lateral Superior Der.",
+    "Cajón Lateral Inferior Der.", "Bolsillos Puerta Trasera", "Compartimento Techo Cabina",
+    "Debajo Asiento Acompañante", "Sin Ubicación Específica"
+];
+
+const defaultInitialMechanicalReviewItems: { name: string }[] = [
+  { name: 'Pastillas de Freno (Delanteras)' }, { name: 'Pastillas de Freno (Traseras)' },
+  { name: 'Discos de Freno (Delanteros)' }, { name: 'Discos de Freno (Traseros)' },
+  { name: 'Líquido de Frenos (Nivel y Estado)' }, { name: 'Latiguillos y Tuberías de Freno' },
+  { name: 'Servofreno (Asistencia de Frenado)' }, { name: 'Freno de Estacionamiento' },
+  { name: 'Presión Neumático Delantero Izquierdo' }, { name: 'Presión Neumático Delantero Derecho' },
+  { name: 'Presión Neumático Trasero Izquierdo (Interior si gemela)' }, { name: 'Presión Neumático Trasero Derecho (Interior si gemela)' },
+  { name: 'Presión Neumático Trasero Izquierdo (Exterior si gemela)' }, { name: 'Presión Neumático Trasero Derecho (Exterior si gemela)' },
+  { name: 'Presión Neumático de Repuesto' }, { name: 'Profundidad Dibujo Neumáticos (Todos)' },
+  { name: 'Estado General Neumáticos (Cortes, Deformaciones, Desgaste irregular)' }, { name: 'Apriete de Tuercas/Tornillos de Rueda' },
+  { name: 'Luces de Cruce (Cortas)' }, { name: 'Luces de Carretera (Largas)' },
+  { name: 'Luces de Posición (Delanteras)' }, { name: 'Luces de Posición (Traseras)' },
+  { name: 'Luces de Freno (Incluida tercera luz)' }, { name: 'Intermitentes Delanteros (Izq. y Der.)' },
+  { name: 'Intermitentes Traseros (Izq. y Der.)' }, { name: 'Intermitentes Laterales (Izq. y Der.)' },
+  { name: 'Luces de Emergencia (Warning)' }, { name: 'Luces de Marcha Atrás' },
+  { name: 'Luz Antiniebla Delantera' }, { name: 'Luz Antiniebla Trasera' }, { name: 'Luces de Matrícula' },
+  { name: 'Luces Rotativas/Prioritarias Azules' }, { name: 'Luces Interiores Cabina Conducción' },
+  { name: 'Luces Interiores Célula Sanitaria (General, Quirófano si aplica)' }, { name: 'Nivel de Aceite Motor' },
+  { name: 'Nivel de Líquido Refrigerante' }, { name: 'Estado de Correas (Alternador, Dirección, A/A, etc.)' },
+  { name: 'Estado de Mangueras (Refrigeración, Admisión, Combustible, etc.)' }, { name: 'Fugas Visibles en Compartimento Motor (Aceite, Refrigerante, Combustible)' },
+  { name: 'Batería Principal (Estado Bornes, Sujeción, Nivel Electrolito si aplica)' }, { name: 'Batería Auxiliar Célula Sanitaria (si aplica)' },
+  { name: 'Holgura en la Dirección' }, { name: 'Nivel Líquido Dirección Asistida' },
+  { name: 'Guardapolvos de Dirección (Cremallera y Rótulas)' }, { name: 'Amortiguadores Delanteros (Fugas, Estado)' },
+  { name: 'Amortiguadores Traseros (Fugas, Estado)' }, { name: 'Ballestas/Muelles (Estado, Sujeciones)' },
+  { name: 'Silentblocks y Bujes de Suspensión (Visible)' }, { name: 'Funcionamiento Alternador (Testigo Batería al arrancar/apagar)' },
+  { name: 'Estado del Cableado Visible General' }, { name: 'Claxon / Bocina' },
+  { name: 'Estado Parabrisas y Ventanillas (Fisuras, Impactos)' }, { name: 'Funcionamiento Elevalunas Eléctricos' },
+  { name: 'Cierre Centralizado y Cerraduras Puertas' }, { name: 'Espejos Retrovisores (Exteriores e Interior)' },
+  { name: 'Limpiaparabrisas (Escobillas y Funcionamiento)' }, { name: 'Nivel Líquido Limpiaparabrisas' },
+  { name: 'Estado Chapa y Pintura (Golpes, Óxido significativo)' }, { name: 'Funcionamiento Puertas Célula (Lateral y Trasera)' },
+  { name: 'Escalón de Acceso (si aplica, estado y funcionamiento)' }, { name: 'Anclajes Camilla Principal' },
+  { name: 'Soportes Equipamiento Médico (Fijación)' }, { name: 'Cinturones de Seguridad (Todos los asientos, célula y cabina)' },
+  { name: 'Fugas de Fluidos Bajo el Vehículo (Revisar tras estacionamiento)' }, { name: 'Estado General del Sistema de Escape (Fugas, Corrosión, Sujeción)' },
+  { name: 'Emisión de Humos Anormal (Color, Densidad excesiva)' }, { name: 'Triángulos de Señalización (Cantidad y Estado)' },
+  { name: 'Chaleco Reflectante (Cantidad y Estado)' }, { name: 'Extintor (Presión, Caducidad, Sujeción)' },
+  { name: 'Gato y Herramientas para Cambio de Rueda' }, { name: 'Botiquín de Primeros Auxilios del Vehículo (si normativo)' },
+  { name: 'Sistema de Calefacción/AA Célula Sanitaria' }, { name: 'Sistema de Oxígeno Fijo (Manómetros, Fugas en tuberías)' },
+  { name: 'Tomas de Corriente 12V / 220V en Célula (Funcionamiento)' }, { name: 'Iluminación de Emergencia Exterior (Focos trabajo, etc.)' },
+  { name: 'Sirena y Sistema PA (Funcionamiento y Tonos)' },
+];
+
 
 interface AppDataContextType {
   ambulances: Ambulance[];
@@ -329,7 +381,7 @@ interface AppDataContextType {
   deleteNonConsumableMaterial: (id: string) => void;
 
   alerts: Alert[];
-  generateAlerts: () => void; // Now takes an optional email for simulation
+  generateAlerts: () => void; 
 
   updateAmbulanceWorkflowStep: (ambulanceId: string, step: 'mechanical' | 'cleaning' | 'inventory', status: boolean) => void;
   getAllAmbulancesCount: () => number;
@@ -338,7 +390,17 @@ interface AppDataContextType {
   getRevisionDiariaVehiculoByAmbulanceId: (ambulanceId: string) => RevisionDiariaVehiculo | undefined;
   saveRevisionDiariaVehiculo: (check: Omit<RevisionDiariaVehiculo, 'id'>) => void;
   
+  // Configurable Ambulance Storage Locations
   getAmbulanceStorageLocations: () => readonly AmbulanceStorageLocation[];
+  addAmbulanceStorageLocation: (location: string) => void;
+  updateAmbulanceStorageLocation: (oldLocation: string, newLocation: string) => boolean;
+  deleteAmbulanceStorageLocation: (location: string) => boolean;
+
+  // Configurable Mechanical Review Items
+  getConfigurableMechanicalReviewItems: () => Readonly<{ name: string }[]>;
+  addConfigurableMechanicalReviewItem: (item: { name: string }) => void;
+  updateConfigurableMechanicalReviewItem: (originalName: string, newName: string) => boolean;
+  deleteConfigurableMechanicalReviewItem: (name: string) => boolean;
 
   // USVB Kit Management
   usvbKits: USVBKit[];
@@ -412,22 +474,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>(processedUSVBKits); 
   const [inventoryLogs, setInventoryLogs] = useState<InventoryLogEntry[]>([]);
   const [notificationEmailConfig, setNotificationEmailConfigState] = useState<string | null>(null);
+  const [configurableAmbulanceStorageLocations, setConfigurableAmbulanceStorageLocations] = useState<string[]>(defaultInitialAmbulanceStorageLocations);
+  const [configurableMechanicalReviewItems, setConfigurableMechanicalReviewItems] = useState<{name: string}[]>(defaultInitialMechanicalReviewItems);
 
+
+  // Load configs from localStorage
   useEffect(() => {
-    // Cargar email de notificación desde localStorage al inicio
     if (typeof window !== 'undefined') {
       const storedEmail = localStorage.getItem(NOTIFICATION_EMAIL_STORAGE_KEY);
-      if (storedEmail) {
-        setNotificationEmailConfigState(storedEmail);
-      }
+      if (storedEmail) setNotificationEmailConfigState(storedEmail);
+
+      const storedLocations = localStorage.getItem(LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS);
+      if (storedLocations) setConfigurableAmbulanceStorageLocations(JSON.parse(storedLocations));
+      else localStorage.setItem(LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS, JSON.stringify(defaultInitialAmbulanceStorageLocations));
+      
+      const storedMechItems = localStorage.getItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS);
+      if (storedMechItems) setConfigurableMechanicalReviewItems(JSON.parse(storedMechItems));
+      else localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(defaultInitialMechanicalReviewItems));
     }
   }, []);
 
   const getNotificationEmailConfig = useCallback(() => {
-    if (user?.role === 'coordinador') {
-      return notificationEmailConfig;
-    }
-    return null; // Solo los coordinadores pueden ver/usar el email configurado
+    if (user?.role === 'coordinador') return notificationEmailConfig;
+    return null;
   }, [user, notificationEmailConfig]);
 
   const setNotificationEmailConfig = useCallback((email: string | null) => {
@@ -441,6 +510,105 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [user]);
+
+  // --- Configurable Ambulance Storage Locations ---
+  const getAmbulanceStorageLocations = useCallback((): readonly AmbulanceStorageLocation[] => {
+    return configurableAmbulanceStorageLocations;
+  }, [configurableAmbulanceStorageLocations]);
+
+  const addAmbulanceStorageLocation = useCallback((location: string) => {
+    if (user?.role !== 'coordinador' || !location.trim() || configurableAmbulanceStorageLocations.includes(location.trim())) {
+      if (configurableAmbulanceStorageLocations.includes(location.trim())) {
+        toast({ title: "Error", description: "Esta ubicación ya existe.", variant: "destructive" });
+      }
+      return;
+    }
+    const newLocations = [...configurableAmbulanceStorageLocations, location.trim()];
+    setConfigurableAmbulanceStorageLocations(newLocations);
+    localStorage.setItem(LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS, JSON.stringify(newLocations));
+    toast({ title: "Ubicación Añadida", description: `"${location.trim()}" ha sido añadida.` });
+  }, [user, configurableAmbulanceStorageLocations]);
+
+  const updateAmbulanceStorageLocation = useCallback((oldLocation: string, newLocation: string): boolean => {
+    if (user?.role !== 'coordinador' || !newLocation.trim() || configurableAmbulanceStorageLocations.includes(newLocation.trim())) {
+      if (configurableAmbulanceStorageLocations.includes(newLocation.trim())) {
+         toast({ title: "Error", description: `La ubicación "${newLocation.trim()}" ya existe.`, variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: "El nuevo nombre de ubicación no puede estar vacío.", variant: "destructive" });
+      }
+      return false;
+    }
+    const newLocations = configurableAmbulanceStorageLocations.map(loc => loc === oldLocation ? newLocation.trim() : loc);
+    setConfigurableAmbulanceStorageLocations(newLocations);
+    localStorage.setItem(LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS, JSON.stringify(newLocations));
+
+    // Update in materials
+    setConsumableMaterials(prev => prev.map(m => m.storageLocation === oldLocation ? { ...m, storageLocation: newLocation.trim() } : m));
+    setNonConsumableMaterials(prev => prev.map(m => m.storageLocation === oldLocation ? { ...m, storageLocation: newLocation.trim() } : m));
+    toast({ title: "Ubicación Actualizada", description: `"${oldLocation}" es ahora "${newLocation.trim()}".` });
+    return true;
+  }, [user, configurableAmbulanceStorageLocations]);
+
+  const deleteAmbulanceStorageLocation = useCallback((locationToDelete: string): boolean => {
+    if (user?.role !== 'coordinador') return false;
+    const isInUseConsumable = consumableMaterials.some(m => m.storageLocation === locationToDelete);
+    const isInUseNonConsumable = nonConsumableMaterials.some(m => m.storageLocation === locationToDelete);
+
+    if (isInUseConsumable || isInUseNonConsumable) {
+      toast({ title: "Error al Eliminar", description: `La ubicación "${locationToDelete}" está en uso y no puede ser eliminada.`, variant: "destructive" });
+      return false;
+    }
+    const newLocations = configurableAmbulanceStorageLocations.filter(loc => loc !== locationToDelete);
+    setConfigurableAmbulanceStorageLocations(newLocations);
+    localStorage.setItem(LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS, JSON.stringify(newLocations));
+    toast({ title: "Ubicación Eliminada", description: `"${locationToDelete}" ha sido eliminada.` });
+    return true;
+  }, [user, configurableAmbulanceStorageLocations, consumableMaterials, nonConsumableMaterials]);
+
+
+  // --- Configurable Mechanical Review Items ---
+  const getConfigurableMechanicalReviewItems = useCallback((): Readonly<{ name: string }[]> => {
+    return configurableMechanicalReviewItems;
+  }, [configurableMechanicalReviewItems]);
+
+  const addConfigurableMechanicalReviewItem = useCallback((item: { name: string }) => {
+    if (user?.role !== 'coordinador' || !item.name.trim() || configurableMechanicalReviewItems.some(i => i.name.toLowerCase() === item.name.trim().toLowerCase())) {
+      if (configurableMechanicalReviewItems.some(i => i.name.toLowerCase() === item.name.trim().toLowerCase())) {
+        toast({ title: "Error", description: "Este ítem de revisión ya existe.", variant: "destructive" });
+      }
+      return;
+    }
+    const newItems = [...configurableMechanicalReviewItems, { name: item.name.trim() }];
+    setConfigurableMechanicalReviewItems(newItems);
+    localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(newItems));
+    toast({ title: "Ítem Añadido", description: `"${item.name.trim()}" añadido a la plantilla de revisión.` });
+  }, [user, configurableMechanicalReviewItems]);
+
+  const updateConfigurableMechanicalReviewItem = useCallback((originalName: string, newName: string): boolean => {
+    if (user?.role !== 'coordinador' || !newName.trim() || (originalName !== newName && configurableMechanicalReviewItems.some(i => i.name.toLowerCase() === newName.trim().toLowerCase())) ) {
+      if (configurableMechanicalReviewItems.some(i => i.name.toLowerCase() === newName.trim().toLowerCase())) {
+         toast({ title: "Error", description: `El ítem de revisión "${newName.trim()}" ya existe.`, variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: "El nuevo nombre del ítem no puede estar vacío.", variant: "destructive" });
+      }
+      return false;
+    }
+    const newItems = configurableMechanicalReviewItems.map(item => item.name === originalName ? { ...item, name: newName.trim() } : item);
+    setConfigurableMechanicalReviewItems(newItems);
+    localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(newItems));
+    toast({ title: "Ítem Actualizado", description: `"${originalName}" es ahora "${newName.trim()}". (Esto solo afecta a nuevas revisiones)` });
+    return true;
+  }, [user, configurableMechanicalReviewItems]);
+
+  const deleteConfigurableMechanicalReviewItem = useCallback((nameToDelete: string): boolean => {
+    if (user?.role !== 'coordinador') return false;
+    // No se verifica si está en uso en revisiones históricas para el prototipo, solo se elimina de la plantilla.
+    const newItems = configurableMechanicalReviewItems.filter(item => item.name !== nameToDelete);
+    setConfigurableMechanicalReviewItems(newItems);
+    localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(newItems));
+    toast({ title: "Ítem Eliminado", description: `"${nameToDelete}" eliminado de la plantilla de revisión. (Las revisiones existentes no cambian)` });
+    return true;
+  }, [user, configurableMechanicalReviewItems]);
 
 
   const accessibleAmbulances = useMemo(() => {
@@ -841,11 +1009,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setRevisionesDiariasVehiculo(prev => [newCheck, ...prev]);
     }
   };
-
-  const getAmbulanceStorageLocations = (): readonly AmbulanceStorageLocation[] => {
-    return ambulanceStorageLocations;
-  };
-
+  
   // --- USVB Kit Management ---
   const getUSVBKitById = (kitId: string): USVBKit | undefined => {
     return usvbKitsData.find(kit => kit.id === kitId);
@@ -871,6 +1035,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (authLoading || !user) return; 
     const newAlerts: Alert[] = [];
     const today = new Date();
+    const configuredEmail = getNotificationEmailConfig();
+
 
     accessibleAmbulances.forEach(ambulance => {
       if (!ambulance.mechanicalReviewCompleted && (!ambulance.lastMechanicalReview || new Date(ambulance.lastMechanicalReview) < new Date(today.getTime() - 14*24*60*60*1000) )) {
@@ -893,6 +1059,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           createdAt: today.toISOString(),
         });
       }
+
+      const lastDailyCheck = getRevisionDiariaVehiculoByAmbulanceId(ambulance.id);
+      const twentyFourHoursAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+      if (!lastDailyCheck || parseISO(lastDailyCheck.checkDate) < twentyFourHoursAgo) {
+         newAlerts.push({
+          id: `alert-dailycheck-${ambulance.id}`,
+          type: 'daily_check_pending',
+          message: `Revisión Diaria del Vehículo pendiente para ${ambulance.name}. Última: ${lastDailyCheck ? format(parseISO(lastDailyCheck.checkDate), 'PPP', { locale: es }) : 'Nunca'}`,
+          ambulanceId: ambulance.id,
+          severity: 'medium',
+          createdAt: today.toISOString(),
+        });
+      }
+
     });
 
     const accessibleAmbulanceIds = new Set(accessibleAmbulances.map(a => a.id));
@@ -905,15 +1085,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const daysUntilExpiry = (expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
 
       if (daysUntilExpiry < 0) {
+        const alertMsg = `Material ${material.name} en ${ambulanceName} caducó el ${format(expiryDate, 'PPP', { locale: es })}.`;
         newAlerts.push({
           id: `alert-exp-${material.id}`,
           type: 'expired_material',
-          message: `Material ${material.name} en ${ambulanceName} caducó el ${format(expiryDate, 'PPP', { locale: es })}.`,
+          message: alertMsg,
           materialId: material.id,
           ambulanceId: material.ambulanceId,
           severity: 'high',
           createdAt: today.toISOString(),
         });
+        if (configuredEmail) {
+            toast({ title: "ALERTA CRÍTICA (Ambulancia)", description: `${alertMsg} Notificación simulada a ${configuredEmail}.`, variant: "destructive", duration: 10000 });
+        }
       } else if (daysUntilExpiry <= 7) {
         newAlerts.push({
           id: `alert-expsoon-${material.id}`,
@@ -928,7 +1112,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     });
     setAlerts(newAlerts);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user, accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, allAmbulancesData]); 
+  }, [authLoading, user, accessibleAmbulances, consumableMaterials, mechanicalReviews, cleaningLogs, allAmbulancesData, getNotificationEmailConfig, revisionesDiariasVehiculo]); 
 
   useEffect(() => {
     if (!authLoading) {
@@ -952,7 +1136,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     updateAmbulanceWorkflowStep,
     getAllAmbulancesCount,
     revisionesDiariasVehiculo, getRevisionDiariaVehiculoByAmbulanceId, saveRevisionDiariaVehiculo,
-    getAmbulanceStorageLocations,
+    getAmbulanceStorageLocations, addAmbulanceStorageLocation, updateAmbulanceStorageLocation, deleteAmbulanceStorageLocation,
+    getConfigurableMechanicalReviewItems, addConfigurableMechanicalReviewItem, updateConfigurableMechanicalReviewItem, deleteConfigurableMechanicalReviewItem,
     usvbKits: usvbKitsData, getUSVBKitById, updateUSVBKitMaterialQuantity,
     inventoryLogs, getInventoryLogsByAmbulanceId,
     getNotificationEmailConfig, setNotificationEmailConfig,
@@ -972,4 +1157,3 @@ export function useAppData() {
   }
   return context;
 }
-
