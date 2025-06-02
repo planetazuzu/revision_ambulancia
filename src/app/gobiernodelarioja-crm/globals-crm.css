@@ -106,8 +106,7 @@ h1, h2, h3, h4, h5, h6 {
   body.theme-rioja {
     background-color: hsl(var(--background-rioja));
     color: hsl(var(--foreground-rioja));
-    /* Aquí podrías intentar aplicar la fuente "Riojana" si estuviera cargada */
-    /* font-family: "Riojana Regular", system-ui, sans-serif; */
+    @apply font-serif; /* Apply Georgia font */
   }
 }
 
@@ -176,4 +175,3 @@ h1, h2, h3, h4, h5, h6 {
 .dark-rioja.theme-rioja ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary-rioja));
 }
-

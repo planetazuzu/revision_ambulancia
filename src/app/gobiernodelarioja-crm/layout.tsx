@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter as FontSans } from 'next/font/google'; // Usando Inter como fallback para Riojana
+// Removed Inter font import: import { Inter as FontSans } from 'next/font/google';
 import './globals-crm.css'; // CSS específico para este tema
 import { cn } from '@/lib/utils';
 import { ThemeProvider as NextThemesProvider } from "next-themes";
@@ -7,10 +7,12 @@ import { HeaderCRM } from '@/components/gobiernodelarioja-crm/HeaderCRM';
 import { SidebarCRM } from '@/components/gobiernodelarioja-crm/SidebarCRM';
 import React from 'react';
 
+/*
 const fontSans = FontSans({
   subsets: ['latin'],
   variable: '--font-sans',
 });
+*/
 
 export const metadata: Metadata = {
   title: 'CRM/ERP Gobierno de La Rioja',
@@ -35,7 +37,7 @@ export default function CrmLayout({
 }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={cn("min-h-screen bg-background font-sans antialiased theme-rioja", fontSans.variable)}>
+      <body className={cn("min-h-screen bg-background font-serif antialiased theme-rioja" /* Removed fontSans.variable and changed font-sans to font-serif */)}>
         <RiojaThemeProvider>
           <div className="flex min-h-screen w-full flex-col">
             <SidebarCRM />
