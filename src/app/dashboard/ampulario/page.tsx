@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, PlusCircle, Edit, Trash2, FilterX, Search, Home, ArchiveRestore, FileSpreadsheet } from 'lucide-react';
+import { Upload, PlusCircle, Edit, Trash2, FilterX, Search, Home, ArchiveRestore, FileSpreadsheet, Info } from 'lucide-react';
 import type { AmpularioMaterial, MaterialRoute, Space } from '@/types';
 import { format, parseISO, differenceInDays, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -37,7 +37,7 @@ export default function GestionMaterialesPage() {
   const { user } = useAuth(); 
   const [materials, setMaterials] = useState<AmpularioMaterial[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string>(DEFAULT_SPACE_ID);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string>(''); // Iniciar vacío hasta que carguen espacios
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,30 +60,28 @@ export default function GestionMaterialesPage() {
       const data: Space[] = await response.json();
       setSpaces(data);
 
-      if (resetSelectedSpace || !data.find(s => s.id === selectedSpaceId) || data.length === 0) {
-        if (data.length > 0) {
+      if (data.length > 0) {
+        if (resetSelectedSpace || !data.find(s => s.id === selectedSpaceId)) {
           const defaultSpace = data.find(s => s.id === DEFAULT_SPACE_ID) || data[0];
           setSelectedSpaceId(defaultSpace.id);
-        } else {
-          setSelectedSpaceId('');
         }
+      } else {
+        setSelectedSpaceId(''); // No spaces available
+        setMaterials([]); // Clear materials if no spaces
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "No se pudieron cargar los espacios.", variant: "destructive" });
       setSpaces([]); 
       setSelectedSpaceId('');
+      setMaterials([]);
     } finally {
       setIsLoadingSpaces(false);
     }
-  }, [toast, selectedSpaceId]);
+  }, [toast, selectedSpaceId]); // selectedSpaceId is needed here to re-evaluate if current selection is valid among new spaces
 
 
   const fetchMaterials = useCallback(async () => {
-    if (!selectedSpaceId && spaces.length > 0) { 
-        setSelectedSpaceId(spaces[0].id);
-        return; 
-    }
-    if (!selectedSpaceId && spaces.length === 0) { 
+    if (!selectedSpaceId) { // Don't fetch if no space is selected
         setMaterials([]);
         setIsLoadingMaterials(false);
         return;
@@ -92,7 +90,7 @@ export default function GestionMaterialesPage() {
     setIsLoadingMaterials(true);
     try {
       const params = new URLSearchParams();
-      if (selectedSpaceId) params.append('spaceId', selectedSpaceId);
+      params.append('spaceId', selectedSpaceId); // Always use selectedSpaceId
       if (filterRoute !== 'all') params.append('routeName', filterRoute);
       if (searchTerm) params.append('nameQuery', searchTerm);
 
@@ -106,17 +104,26 @@ export default function GestionMaterialesPage() {
     } finally {
       setIsLoadingMaterials(false);
     }
-  }, [selectedSpaceId, filterRoute, searchTerm, toast, spaces]);
+  }, [selectedSpaceId, filterRoute, searchTerm, toast]);
 
+  // Effect to load spaces on component mount
   useEffect(() => {
-    fetchSpaces();
-  }, [fetchSpaces]); 
+    fetchSpaces(true); // resetSelectedSpace to true to ensure a default is picked
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Runs once on mount
 
+  // Effect to load materials when selectedSpaceId changes or filters change
   useEffect(() => {
-    if (!isLoadingSpaces) { 
-        fetchMaterials();
+    if (!isLoadingSpaces) { // Only fetch materials if spaces have been loaded/attempted
+        if (selectedSpaceId) {
+            fetchMaterials();
+        } else {
+            // If no space is selected (e.g., no spaces exist), clear materials
+            setMaterials([]);
+            setIsLoadingMaterials(false); 
+        }
     }
-  }, [fetchMaterials, isLoadingSpaces]);
+  }, [selectedSpaceId, fetchMaterials, isLoadingSpaces]);
 
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,7 +147,7 @@ export default function GestionMaterialesPage() {
     } catch (error: any) {
       toast({ title: "Error de Importación", description: error.message, variant: "destructive" });
     } finally {
-        if (event.target.value) { // Check if target.value exists before resetting
+        if (event.target.value) { 
             event.target.value = ''; 
         }
     }
@@ -148,6 +155,10 @@ export default function GestionMaterialesPage() {
 
   
   const handleAddNewMaterial = () => {
+    if (spaces.length === 0) {
+      toast({ title: "Acción no disponible", description: "Debe crear al menos un espacio de almacenamiento antes de añadir materiales.", variant: "destructive" });
+      return;
+    }
     setEditingMaterial(null);
     setIsMaterialFormOpen(true);
   };
@@ -190,7 +201,7 @@ export default function GestionMaterialesPage() {
         throw new Error(errorData.error || 'No se pudo eliminar el espacio. Asegúrate de que no esté en uso.');
       }
       toast({ title: "Espacio Eliminado", description: "El espacio ha sido eliminado." });
-      await fetchSpaces(true); 
+      await fetchSpaces(true); // Refetch spaces and reset selected space if necessary
     } catch (error: any) {
       toast({ title: "Error al Eliminar Espacio", description: error.message, variant: "destructive" });
     }
@@ -202,9 +213,10 @@ export default function GestionMaterialesPage() {
     setFilterRoute('all');
     if (spaces.length > 0) {
         const defaultSpace = spaces.find(s => s.id === DEFAULT_SPACE_ID) || spaces[0];
-        setSelectedSpaceId(defaultSpace.id);
+        setSelectedSpaceId(defaultSpace.id); // This will trigger fetchMaterials due to useEffect dependency
     } else {
         setSelectedSpaceId('');
+        setMaterials([]); // Clear materials if no spaces are available
     }
   };
 
@@ -234,17 +246,20 @@ export default function GestionMaterialesPage() {
                 <div className="flex justify-between items-center">
                     <div>
                         <CardTitle>Filtros de Materiales</CardTitle>
-                        <CardDescription>Refinar la lista de materiales para {isLoadingSpaces ? "..." : (spaces.find(s => s.id === selectedSpaceId)?.name || 'ningún espacio seleccionado')}.</CardDescription>
+                        <CardDescription>
+                          Refinar la lista de materiales para {isLoadingSpaces && !selectedSpaceId ? "..." : (spaces.find(s => s.id === selectedSpaceId)?.name || (spaces.length > 0 ? 'un espacio' : 'ningún espacio seleccionado'))}.
+                          {spaces.length === 0 && !isLoadingSpaces && " Por favor, crea un espacio en la pestaña 'Espacios de Almacenamiento'."}
+                        </CardDescription>
                     </div>
                     {isCoordinator && ( 
                       <div className="flex gap-2">
-                          <Button onClick={handleAddNewMaterial}>
+                          <Button onClick={handleAddNewMaterial} disabled={spaces.length === 0}>
                               <PlusCircle className="mr-2 h-4 w-4" /> Añadir Material
                           </Button>
-                          <Button asChild variant="outline">
-                          <label htmlFor="file-upload" className="cursor-pointer flex items-center">
+                          <Button asChild variant="outline" disabled={spaces.length === 0}>
+                          <label htmlFor="file-upload" className={cn("cursor-pointer flex items-center", spaces.length === 0 && "cursor-not-allowed opacity-50")}>
                               <Upload className="mr-2 h-4 w-4" /> Importar Archivo
-                              <input id="file-upload" type="file" accept=".csv,.xlsx" onChange={handleFileUpload} className="hidden" />
+                              <input id="file-upload" type="file" accept=".csv,.xlsx" onChange={handleFileUpload} className="hidden" disabled={spaces.length === 0} />
                           </label>
                           </Button>
                       </div>
@@ -263,6 +278,7 @@ export default function GestionMaterialesPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-8 w-full"
+                            disabled={spaces.length === 0}
                         />
                     </div>
                 </div>
@@ -270,7 +286,7 @@ export default function GestionMaterialesPage() {
                     <Label htmlFor="filter-space" className="block text-sm font-medium text-muted-foreground mb-1">Espacio</Label>
                     <Select value={selectedSpaceId} onValueChange={setSelectedSpaceId} disabled={isLoadingSpaces || spaces.length === 0}>
                         <SelectTrigger id="filter-space">
-                            <SelectValue placeholder={isLoadingSpaces ? "Cargando espacios..." : (spaces.length === 0 ? "No hay espacios disponibles" : "Seleccionar espacio")} />
+                            <SelectValue placeholder={isLoadingSpaces ? "Cargando espacios..." : (spaces.length === 0 ? "No hay espacios" : "Seleccionar espacio")} />
                         </SelectTrigger>
                         <SelectContent>
                             {spaces.map(space => (
@@ -281,7 +297,7 @@ export default function GestionMaterialesPage() {
                 </div>
                 <div className="flex-1 sm:flex-initial sm:w-1/3">
                     <Label htmlFor="filter-route" className="block text-sm font-medium text-muted-foreground mb-1">Vía</Label>
-                    <Select value={filterRoute} onValueChange={(value) => setFilterRoute(value as MaterialRoute | 'all')}>
+                    <Select value={filterRoute} onValueChange={(value) => setFilterRoute(value as MaterialRoute | 'all')} disabled={spaces.length === 0}>
                         <SelectTrigger id="filter-route">
                             <SelectValue placeholder="Filtrar por vía" />
                         </SelectTrigger>
@@ -293,7 +309,7 @@ export default function GestionMaterialesPage() {
                     </Select>
                 </div>
                 <div className="flex items-end">
-                    <Button variant="outline" onClick={clearFilters} className="w-full sm:w-auto">
+                    <Button variant="outline" onClick={clearFilters} className="w-full sm:w-auto" disabled={spaces.length === 0 && !searchTerm && filterRoute === 'all'}>
                         <FilterX className="mr-2 h-4 w-4" /> Limpiar Filtros
                     </Button>
                 </div>
@@ -323,7 +339,7 @@ export default function GestionMaterialesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoadingMaterials ? (
+                    {isLoadingMaterials || (isLoadingSpaces && selectedSpaceId) ? (
                       <TableRow><TableCell colSpan={isCoordinator ? 7 : 6} className="h-24 text-center">Cargando materiales...</TableCell></TableRow>
                     ) : materials.length > 0 ? (
                       materials.map((material) => {
@@ -383,7 +399,10 @@ export default function GestionMaterialesPage() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={isCoordinator ? 7 : 6} className="h-24 text-center">
-                          No se encontraron materiales para los filtros actuales.
+                          {spaces.length === 0 && !isLoadingSpaces
+                            ? <div className="flex flex-col items-center gap-2"><Info className="h-8 w-8 text-muted-foreground" /><p>No hay espacios de almacenamiento definidos. <br/>Por favor, crea uno en la pestaña 'Espacios de Almacenamiento' para empezar.</p></div>
+                            : "No se encontraron materiales para los filtros o el espacio actual."
+                          }
                         </TableCell>
                       </TableRow>
                     )}
@@ -436,7 +455,7 @@ export default function GestionMaterialesPage() {
                                                   </Button>
                                                   <AlertDialog>
                                                       <AlertDialogTrigger asChild>
-                                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80">
+                                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive/80" disabled={space.id === DEFAULT_SPACE_ID && spaces.length === 1}>
                                                           <Trash2 className="h-4 w-4" />
                                                           <span className="sr-only">Eliminar Espacio</span>
                                                       </Button>
@@ -446,6 +465,7 @@ export default function GestionMaterialesPage() {
                                                           <AlertDialogTitle>¿Estás seguro de eliminar el espacio "{space.name}"?</AlertDialogTitle>
                                                           <AlertDialogDescription>
                                                           Esta acción no se puede deshacer. Solo se puede eliminar un espacio si no está siendo utilizado por ningún material.
+                                                          El espacio por defecto no se puede eliminar si es el único disponible.
                                                           </AlertDialogDescription>
                                                       </AlertDialogHeader>
                                                       <AlertDialogFooter>
@@ -479,11 +499,11 @@ export default function GestionMaterialesPage() {
       {isMaterialFormOpen && (
         <AmpularioMaterialForm
           material={editingMaterial}
-          spaces={spaces}
+          spaces={spaces} // Pasar todos los espacios disponibles al formulario
           isOpen={isMaterialFormOpen}
           onOpenChange={setIsMaterialFormOpen}
           onSave={() => {
-            fetchMaterials();
+            fetchMaterials(); // Solo necesita refetch los materiales del espacio actual
             setIsMaterialFormOpen(false);
           }}
         />
@@ -495,7 +515,7 @@ export default function GestionMaterialesPage() {
             isOpen={isSpaceFormOpen}
             onOpenChange={setIsSpaceFormOpen}
             onSave={async () => {
-                await fetchSpaces(true); 
+                await fetchSpaces(true); // Refetch y potencialmente reset selectedSpaceId
                 setIsSpaceFormOpen(false);
             }}
         />
@@ -503,3 +523,5 @@ export default function GestionMaterialesPage() {
     </div>
   );
 }
+
+    
