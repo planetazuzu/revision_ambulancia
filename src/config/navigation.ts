@@ -14,7 +14,8 @@ export interface NavItem {
 export const mainNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
   { href: '/dashboard/ambulances', label: 'Ambulancias', icon: Ambulance },
-  { href: '/dashboard/ampulario', label: 'Gestión de Materiales', icon: Archive }, // Corregido: gestion-materiales -> ampulario
+  // La ruta para Gestión de Materiales es /dashboard/ampulario
+  { href: '/dashboard/ampulario', label: 'Gestión de Materiales', icon: Archive }, 
   { href: '/dashboard/usvb-kit-inventory', label: 'Dotación USVB', icon: PackageSearch },
   { href: '/dashboard/alerts', label: 'Alertas', icon: Bell },
   { href: '/dashboard/settings', label: 'Configuración', icon: Settings, adminOnly: true },
