@@ -1,13 +1,12 @@
 
 "use client";
 
-import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial, InventoryLogEntry, InventoryLogAction, ChecklistItem, ChecklistItemStatus, AlertType, CentralInventoryLogEntry } from '@/types';
-// Importar la lista ya no es necesario desde types, se gestiona aquí
+import type { Ambulance, MechanicalReview, CleaningLog, ConsumableMaterial, NonConsumableMaterial, Alert, RevisionDiariaVehiculo, AmbulanceStorageLocation, USVBKit, USVBKitMaterial, InventoryLogEntry, InventoryLogAction, ChecklistItem, ChecklistItemStatus, AlertType, CentralInventoryLogEntry, ConfigurableMechanicalReviewItem } from '@/types';
 import React, { createContext, useContext, useState, type ReactNode, useEffect, useMemo, useCallback } from 'react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuth } from './AuthContext';
-import { toast } from '@/hooks/use-toast'; // Asegúrate que toast está disponible
+import { toast } from '@/hooks/use-toast'; 
 
 // --- USVB Kit Data Transformation ---
 const rawUSVBKitData: { [key: number]: string[] } = {
@@ -231,20 +230,20 @@ const kitDetailsMap: { [key: number]: { name: string; iconName: string; genericI
   14: { name: "Kit Apósitos y Gasas", iconName: "Bandage", genericImageHint: "dressings gauze" },
   15: { name: "Kit Reanimación Adulto (Ambu)", iconName: "HeartPulse", genericImageHint: "ambu bag adult" },
   16: { name: "Kit Oxigenoterapia/Reanimación Pediátrica", iconName: "Baby", genericImageHint: "pediatric oxygen ambu" },
-  17: { name: "Kit Inmovilización y Transporte", iconName: "Accessibility", genericImageHint: "immobilization transport" }, // Consider changing icon if needed for more specificity
+  17: { name: "Kit Inmovilización y Transporte", iconName: "Accessibility", genericImageHint: "immobilization transport" }, 
   18: { name: "Kit Rescate y Seguridad", iconName: "Anchor", genericImageHint: "rescue safety" },
   19: { name: "Kit Inmovilización Cervical", iconName: "UserCog", genericImageHint: "cervical collars head immobilizer" },
   20: { name: "Kit Inmovilización Colchón/Férulas Neopreno", iconName: "BedSingle", genericImageHint: "vacuum mattress splints" },
   21: { name: "Kit Consumibles Varios", iconName: "Archive", genericImageHint: "general consumables" },
   22: { name: "Guantes Nitrilo (S,M,L)", iconName: "Hand", genericImageHint: "nitrile gloves" },
-  23: { name: "Ampulario Medicación", iconName: "Syringe", genericImageHint: "medication ampoules" }, // Consider 'BoxIcon' if it's a box
+  23: { name: "Ampulario Medicación", iconName: "Syringe", genericImageHint: "medication ampoules" }, 
   24: { name: "Kit Baterías y Llaves", iconName: "KeyRound", genericImageHint: "batteries keys" },
   25: { name: "Kit Jeringas y Sueros Pequeños", iconName: "Syringe", genericImageHint: "syringes saline" },
   26: { name: "Kit Material de Punción y Apósitos", iconName: "Bandage", genericImageHint: "needles dressings" },
   27: { name: "Kit Material de Limpieza", iconName: "Trash2", genericImageHint: "cleaning supplies" },
   28: { name: "Kit Fluidoterapia y Medicación IV", iconName: "Droplet", genericImageHint: "iv fluids medication" },
-  29: { name: "Kit Férulas de Vacío", iconName: "Layers", genericImageHint: "vacuum splints" }, // 'Layers' can represent the structure
-  30: { name: "Kit Inmovilización Avanzada (KED/Tracción)", iconName: "Truck", genericImageHint: "ked traction splint" } // 'Truck' for KED, or 'Bone' for traction
+  29: { name: "Kit Férulas de Vacío", iconName: "Layers", genericImageHint: "vacuum splints" }, 
+  30: { name: "Kit Inmovilización Avanzada (KED/Tracción)", iconName: "Truck", genericImageHint: "ked traction splint" } 
 };
 
 
@@ -283,7 +282,7 @@ const generateInitialConfigurableUsvbKits = (): USVBKit[] => {
       return {
         id: `usvb-kit${kitNumber}-matcfg-${index}-${parsed.name.replace(/\s+/g, '-').toLowerCase().substring(0,50)}`,
         name: parsed.name,
-        quantity: parsed.quantity, // For config, this is the target/ideal quantity
+        quantity: parsed.quantity, 
         targetQuantity: parsed.quantity, 
       };
     });
@@ -302,7 +301,7 @@ const generateInitialConfigurableUsvbKits = (): USVBKit[] => {
 
 const LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS = 'ambuConfigurableAmbulanceLocations';
 const LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS = 'ambuConfigurableMechReviewItems';
-const LOCAL_STORAGE_CONFIG_USVB_KITS = 'ambuConfigurableUsvbKits'; // New key for USVB kits config
+const LOCAL_STORAGE_CONFIG_USVB_KITS = 'ambuConfigurableUsvbKits'; 
 
 const defaultInitialAmbulanceStorageLocations: AmbulanceStorageLocation[] = [
     "Mochila Principal (Rojo)", "Mochila Vía Aérea (Azul)", "Mochila Circulatorio (Amarillo)",
@@ -311,45 +310,83 @@ const defaultInitialAmbulanceStorageLocations: AmbulanceStorageLocation[] = [
     "Debajo Asiento Acompañante", "Sin Ubicación Específica"
 ];
 
-const defaultInitialMechanicalReviewItems: { name: string }[] = [
-  { name: 'Pastillas de Freno (Delanteras)' }, { name: 'Pastillas de Freno (Traseras)' },
-  { name: 'Discos de Freno (Delanteros)' }, { name: 'Discos de Freno (Traseros)' },
-  { name: 'Líquido de Frenos (Nivel y Estado)' }, { name: 'Latiguillos y Tuberías de Freno' },
-  { name: 'Servofreno (Asistencia de Frenado)' }, { name: 'Freno de Estacionamiento' },
-  { name: 'Presión Neumático Delantero Izquierdo' }, { name: 'Presión Neumático Delantero Derecho' },
-  { name: 'Presión Neumático Trasero Izquierdo (Interior si gemela)' }, { name: 'Presión Neumático Trasero Derecho (Interior si gemela)' },
-  { name: 'Presión Neumático Trasero Izquierdo (Exterior si gemela)' }, { name: 'Presión Neumático Trasero Derecho (Exterior si gemela)' },
-  { name: 'Presión Neumático de Repuesto' }, { name: 'Profundidad Dibujo Neumáticos (Todos)' },
-  { name: 'Estado General Neumáticos (Cortes, Deformaciones, Desgaste irregular)' }, { name: 'Apriete de Tuercas/Tornillos de Rueda' },
-  { name: 'Luces de Cruce (Cortas)' }, { name: 'Luces de Carretera (Largas)' },
-  { name: 'Luces de Posición (Delanteras)' }, { name: 'Luces de Posición (Traseras)' },
-  { name: 'Luces de Freno (Incluida tercera luz)' }, { name: 'Intermitentes Delanteros (Izq. y Der.)' },
-  { name: 'Intermitentes Traseros (Izq. y Der.)' }, { name: 'Intermitentes Laterales (Izq. y Der.)' },
-  { name: 'Luces de Emergencia (Warning)' }, { name: 'Luces de Marcha Atrás' },
-  { name: 'Luz Antiniebla Delantera' }, { name: 'Luz Antiniebla Trasera' }, { name: 'Luces de Matrícula' },
-  { name: 'Luces Rotativas/Prioritarias Azules' }, { name: 'Luces Interiores Cabina Conducción' },
-  { name: 'Luces Interiores Célula Sanitaria (General, Quirófano si aplica)' }, { name: 'Nivel de Aceite Motor' },
-  { name: 'Nivel de Líquido Refrigerante' }, { name: 'Estado de Correas (Alternador, Dirección, A/A, etc.)' },
-  { name: 'Estado de Mangueras (Refrigeración, Admisión, Combustible, etc.)' }, { name: 'Fugas Visibles en Compartimento Motor (Aceite, Refrigerante, Combustible)' },
-  { name: 'Batería Principal (Estado Bornes, Sujeción, Nivel Electrolito si aplica)' }, { name: 'Batería Auxiliar Célula Sanitaria (si aplica)' },
-  { name: 'Holgura en la Dirección' }, { name: 'Nivel Líquido Dirección Asistida' },
-  { name: 'Guardapolvos de Dirección (Cremallera y Rótulas)' }, { name: 'Amortiguadores Delanteros (Fugas, Estado)' },
-  { name: 'Amortiguadores Traseros (Fugas, Estado)' }, { name: 'Ballestas/Muelles (Estado, Sujeciones)' },
-  { name: 'Silentblocks y Bujes de Suspensión (Visible)' }, { name: 'Funcionamiento Alternador (Testigo Batería al arrancar/apagar)' },
-  { name: 'Estado del Cableado Visible General' }, { name: 'Claxon / Bocina' },
-  { name: 'Estado Parabrisas y Ventanillas (Fisuras, Impactos)' }, { name: 'Funcionamiento Elevalunas Eléctricos' },
-  { name: 'Cierre Centralizado y Cerraduras Puertas' }, { name: 'Espejos Retrovisores (Exteriores e Interior)' },
-  { name: 'Limpiaparabrisas (Escobillas y Funcionamiento)' }, { name: 'Nivel Líquido Limpiaparabrisas' },
-  { name: 'Estado Chapa y Pintura (Golpes, Óxido significativo)' }, { name: 'Funcionamiento Puertas Célula (Lateral y Trasera)' },
-  { name: 'Escalón de Acceso (si aplica, estado y funcionamiento)' }, { name: 'Anclajes Camilla Principal' },
-  { name: 'Soportes Equipamiento Médico (Fijación)' }, { name: 'Cinturones de Seguridad (Todos los asientos, célula y cabina)' },
-  { name: 'Fugas de Fluidos Bajo el Vehículo (Revisar tras estacionamiento)' }, { name: 'Estado General del Sistema de Escape (Fugas, Corrosión, Sujeción)' },
-  { name: 'Emisión de Humos Anormal (Color, Densidad excesiva)' }, { name: 'Triángulos de Señalización (Cantidad y Estado)' },
-  { name: 'Chaleco Reflectante (Cantidad y Estado)' }, { name: 'Extintor (Presión, Caducidad, Sujeción)' },
-  { name: 'Gato y Herramientas para Cambio de Rueda' }, { name: 'Botiquín de Primeros Auxilios del Vehículo (si normativo)' },
-  { name: 'Sistema de Calefacción/AA Célula Sanitaria' }, { name: 'Sistema de Oxígeno Fijo (Manómetros, Fugas en tuberías)' },
-  { name: 'Tomas de Corriente 12V / 220V en Célula (Funcionamiento)' }, { name: 'Iluminación de Emergencia Exterior (Focos trabajo, etc.)' },
-  { name: 'Sirena y Sistema PA (Funcionamiento y Tonos)' },
+const defaultInitialMechanicalReviewItems: ConfigurableMechanicalReviewItem[] = [
+  { id: 'mri-001', name: 'Pastillas de Freno (Delanteras)', category: 'Frenos' },
+  { id: 'mri-002', name: 'Pastillas de Freno (Traseras)', category: 'Frenos' },
+  { id: 'mri-003', name: 'Discos de Freno (Delanteros)', category: 'Frenos' },
+  { id: 'mri-004', name: 'Discos de Freno (Traseros)', category: 'Frenos' },
+  { id: 'mri-005', name: 'Líquido de Frenos (Nivel y Estado)', category: 'Frenos' },
+  { id: 'mri-006', name: 'Latiguillos y Tuberías de Freno', category: 'Frenos' },
+  { id: 'mri-007', name: 'Servofreno (Asistencia de Frenado)', category: 'Frenos' },
+  { id: 'mri-008', name: 'Freno de Estacionamiento', category: 'Frenos' },
+  { id: 'mri-009', name: 'Presión Neumático Delantero Izquierdo', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-010', name: 'Presión Neumático Delantero Derecho', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-011', name: 'Presión Neumático Trasero Izquierdo (Interior si gemela)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-012', name: 'Presión Neumático Trasero Derecho (Interior si gemela)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-013', name: 'Presión Neumático Trasero Izquierdo (Exterior si gemela)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-014', name: 'Presión Neumático Trasero Derecho (Exterior si gemela)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-015', name: 'Presión Neumático de Repuesto', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-016', name: 'Profundidad Dibujo Neumáticos (Todos)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-017', name: 'Estado General Neumáticos (Cortes, Deformaciones, Desgaste irregular)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-018', name: 'Apriete de Tuercas/Tornillos de Rueda', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-019', name: 'Luces de Cruce (Cortas)', category: 'Luces y Señalización' },
+  { id: 'mri-020', name: 'Luces de Carretera (Largas)', category: 'Luces y Señalización' },
+  { id: 'mri-021', name: 'Luces de Posición (Delanteras)', category: 'Luces y Señalización' },
+  { id: 'mri-022', name: 'Luces de Posición (Traseras)', category: 'Luces y Señalización' },
+  { id: 'mri-023', name: 'Luces de Freno (Incluida tercera luz)', category: 'Luces y Señalización' },
+  { id: 'mri-024', name: 'Intermitentes Delanteros (Izq. y Der.)', category: 'Luces y Señalización' },
+  { id: 'mri-025', name: 'Intermitentes Traseros (Izq. y Der.)', category: 'Luces y Señalización' },
+  { id: 'mri-026', name: 'Intermitentes Laterales (Izq. y Der.)', category: 'Luces y Señalización' },
+  { id: 'mri-027', name: 'Luces de Emergencia (Warning)', category: 'Luces y Señalización' },
+  { id: 'mri-028', name: 'Luces de Marcha Atrás', category: 'Luces y Señalización' },
+  { id: 'mri-029', name: 'Luz Antiniebla Delantera', category: 'Luces y Señalización' },
+  { id: 'mri-030', name: 'Luz Antiniebla Trasera', category: 'Luces y Señalización' },
+  { id: 'mri-031', name: 'Luces de Matrícula', category: 'Luces y Señalización' },
+  { id: 'mri-032', name: 'Luces Rotativas/Prioritarias Azules', category: 'Luces y Señalización' },
+  { id: 'mri-033', name: 'Luces Interiores Cabina Conducción', category: 'Luces y Señalización' },
+  { id: 'mri-034', name: 'Luces Interiores Célula Sanitaria (General, Quirófano si aplica)', category: 'Luces y Señalización' },
+  { id: 'mri-035', name: 'Nivel de Aceite Motor', category: 'Motor y Niveles' },
+  { id: 'mri-036', name: 'Nivel de Líquido Refrigerante', category: 'Motor y Niveles' },
+  { id: 'mri-037', name: 'Estado de Correas (Alternador, Dirección, A/A, etc.)', category: 'Motor y Niveles' },
+  { id: 'mri-038', name: 'Estado de Mangueras (Refrigeración, Admisión, Combustible, etc.)', category: 'Motor y Niveles' },
+  { id: 'mri-039', name: 'Fugas Visibles en Compartimento Motor (Aceite, Refrigerante, Combustible)', category: 'Motor y Niveles' },
+  { id: 'mri-040', name: 'Batería Principal (Estado Bornes, Sujeción, Nivel Electrolito si aplica)', category: 'Motor y Niveles' },
+  { id: 'mri-041', name: 'Batería Auxiliar Célula Sanitaria (si aplica)', category: 'Motor y Niveles' },
+  { id: 'mri-042', name: 'Holgura en la Dirección', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-043', name: 'Nivel Líquido Dirección Asistida', category: 'Motor y Niveles' },
+  { id: 'mri-044', name: 'Guardapolvos de Dirección (Cremallera y Rótulas)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-045', name: 'Amortiguadores Delanteros (Fugas, Estado)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-046', name: 'Amortiguadores Traseros (Fugas, Estado)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-047', name: 'Ballestas/Muelles (Estado, Sujeciones)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-048', name: 'Silentblocks y Bujes de Suspensión (Visible)', category: 'Neumáticos y Suspensión' },
+  { id: 'mri-049', name: 'Funcionamiento Alternador (Testigo Batería al arrancar/apagar)', category: 'Motor y Niveles' },
+  { id: 'mri-050', name: 'Estado del Cableado Visible General', category: 'General y Seguridad' },
+  { id: 'mri-051', name: 'Claxon / Bocina', category: 'General y Seguridad' },
+  { id: 'mri-052', name: 'Estado Parabrisas y Ventanillas (Fisuras, Impactos)', category: 'Cabina y Documentación' },
+  { id: 'mri-053', name: 'Funcionamiento Elevalunas Eléctricos', category: 'Cabina y Documentación' },
+  { id: 'mri-054', name: 'Cierre Centralizado y Cerraduras Puertas', category: 'Cabina y Documentación' },
+  { id: 'mri-055', name: 'Espejos Retrovisores (Exteriores e Interior)', category: 'Cabina y Documentación' },
+  { id: 'mri-056', name: 'Limpiaparabrisas (Escobillas y Funcionamiento)', category: 'Cabina y Documentación' },
+  { id: 'mri-057', name: 'Nivel Líquido Limpiaparabrisas', category: 'Motor y Niveles' },
+  { id: 'mri-058', name: 'Estado Chapa y Pintura (Golpes, Óxido significativo)', category: 'General y Seguridad' },
+  { id: 'mri-059', name: 'Funcionamiento Puertas Célula (Lateral y Trasera)', category: 'Equipamiento Específico Ambulancia' },
+  { id: 'mri-060', name: 'Escalón de Acceso (si aplica, estado y funcionamiento)', category: 'Equipamiento Específico Ambulancia' },
+  { id: 'mri-061', name: 'Anclajes Camilla Principal', category: 'Equipamiento Específico Ambulancia' },
+  { id: 'mri-062', name: 'Soportes Equipamiento Médico (Fijación)', category: 'Equipamiento Específico Ambulancia' },
+  { id: 'mri-063', name: 'Cinturones de Seguridad (Todos los asientos, célula y cabina)', category: 'General y Seguridad' },
+  { id: 'mri-064', name: 'Fugas de Fluidos Bajo el Vehículo (Revisar tras estacionamiento)', category: 'Motor y Niveles' },
+  { id: 'mri-065', name: 'Estado General del Sistema de Escape (Fugas, Corrosión, Sujeción)', category: 'Motor y Niveles' },
+  { id: 'mri-066', name: 'Emisión de Humos Anormal (Color, Densidad excesiva)', category: 'Motor y Niveles' },
+  { id: 'mri-067', name: 'Triángulos de Señalización (Cantidad y Estado)', category: 'General y Seguridad' },
+  { id: 'mri-068', name: 'Chaleco Reflectante (Cantidad y Estado)', category: 'General y Seguridad' },
+  { id: 'mri-069', name: 'Extintor (Presión, Caducidad, Sujeción)', category: 'General y Seguridad' },
+  { id: 'mri-070', name: 'Gato y Herramientas para Cambio de Rueda', category: 'General y Seguridad' },
+  { id: 'mri-071', name: 'Botiquín de Primeros Auxilios del Vehículo (si normativo)', category: 'General y Seguridad' },
+  { id: 'mri-072', name: 'Sistema de Calefacción/AA Célula Sanitaria', category: 'Equipamiento Específico Ambulancia' },
+  { id: 'mri-073', name: 'Sistema de Oxígeno Fijo (Manómetros, Fugas en tuberías)', category: 'Equipamiento Específico Ambulancia' },
+  { id: 'mri-074', name: 'Tomas de Corriente 12V / 220V en Célula (Funcionamiento)', category: 'Equipamiento Específico Ambulancia' },
+  { id: 'mri-075', name: 'Iluminación de Emergencia Exterior (Focos trabajo, etc.)', category: 'Luces y Señalización' },
+  { id: 'mri-076', name: 'Sirena y Sistema PA (Funcionamiento y Tonos)', category: 'Luces y Señalización' },
 ];
 
 
@@ -397,13 +434,13 @@ interface AppDataContextType {
   updateAmbulanceStorageLocation: (oldLocation: string, newLocation: string) => boolean;
   deleteAmbulanceStorageLocation: (location: string) => boolean;
 
-  getConfigurableMechanicalReviewItems: () => Readonly<{ name: string }[]>;
-  addConfigurableMechanicalReviewItem: (item: { name: string }) => void;
-  updateConfigurableMechanicalReviewItem: (originalName: string, newName: string) => boolean;
-  deleteConfigurableMechanicalReviewItem: (name: string) => boolean;
+  getConfigurableMechanicalReviewItems: () => Readonly<ConfigurableMechanicalReviewItem[]>;
+  addConfigurableMechanicalReviewItem: (item: { name: string, category: string }) => void;
+  updateConfigurableMechanicalReviewItem: (itemId: string, updates: { name?: string, category?: string }) => boolean;
+  deleteConfigurableMechanicalReviewItem: (itemId: string) => boolean;
 
   // USVB Kit Management
-  usvbKits: USVBKit[]; // Operational data with current quantities
+  usvbKits: USVBKit[]; 
   getUSVBKitById: (kitId: string) => USVBKit | undefined;
   updateUSVBKitMaterialQuantity: (kitId: string, materialId: string, newQuantity: number) => void;
   
@@ -484,15 +521,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [revisionesDiariasVehiculo, setRevisionesDiariasVehiculo] = useState<RevisionDiariaVehiculo[]>([]);
   
-  // USVB Kits: `configurableUsvbKits` is the template/config, `usvbKitsData` is operational data.
   const [configurableUsvbKits, setConfigurableUsvbKitsState] = useState<USVBKit[]>(generateInitialConfigurableUsvbKits());
-  const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>([]); // Operational data
+  const [usvbKitsData, setUsvbKitsData] = useState<USVBKit[]>([]); 
 
   const [inventoryLogs, setInventoryLogs] = useState<InventoryLogEntry[]>([]);
   const [centralInventoryLogsState, setCentralInventoryLogsState] = useState<CentralInventoryLogEntry[]>([]);
   const [notificationEmailConfig, setNotificationEmailConfigState] = useState<string | null>(null);
   const [configurableAmbulanceStorageLocations, setConfigurableAmbulanceStorageLocations] = useState<string[]>(defaultInitialAmbulanceStorageLocations);
-  const [configurableMechanicalReviewItems, setConfigurableMechanicalReviewItems] = useState<{name: string}[]>(defaultInitialMechanicalReviewItems);
+  const [configurableMechanicalReviewItems, setConfigurableMechanicalReviewItemsState] = useState<ConfigurableMechanicalReviewItem[]>(defaultInitialMechanicalReviewItems);
 
   const setConfigurableUsvbKits = useCallback((newKits: USVBKit[] | ((prevKits: USVBKit[]) => USVBKit[])) => {
     const kitsToSave = typeof newKits === 'function' ? newKits(configurableUsvbKits) : newKits;
@@ -502,19 +538,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, [configurableUsvbKits]);
 
-  // Sync operational usvbKitsData with configurableUsvbKits
   useEffect(() => {
     setUsvbKitsData(prevOperationalKits => {
         return configurableUsvbKits.map(configKit => {
             const existingOperationalKit = prevOperationalKits.find(opKit => opKit.id === configKit.id);
             return {
-                ...configKit, // Base structure from config
+                ...configKit, 
                 materials: configKit.materials.map(configMaterial => {
-                    const existingOperationalMaterial = existingOperationalKit?.materials.find(opMat => opMat.name === configMaterial.name); // Match by name if ID changes or for new
+                    const existingOperationalMaterial = existingOperationalKit?.materials.find(opMat => opMat.name === configMaterial.name); 
                     return {
-                        ...configMaterial, // Includes name and targetQuantity from config
-                        id: existingOperationalMaterial?.id || `usvb-mat-${configKit.id}-${configMaterial.name.replace(/\s+/g, '-')}`, // Keep old ID or generate new
-                        quantity: existingOperationalMaterial?.quantity ?? configMaterial.targetQuantity, // Use existing quantity or default to target
+                        ...configMaterial, 
+                        id: existingOperationalMaterial?.id || `usvb-mat-${configKit.id}-${configMaterial.name.replace(/\s+/g, '-')}`, 
+                        quantity: existingOperationalMaterial?.quantity ?? configMaterial.targetQuantity, 
                     };
                 }),
             };
@@ -523,7 +558,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [configurableUsvbKits]);
 
 
-  // Load configs from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedEmail = localStorage.getItem(NOTIFICATION_EMAIL_STORAGE_KEY);
@@ -534,11 +568,23 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       else localStorage.setItem(LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS, JSON.stringify(defaultInitialAmbulanceStorageLocations));
       
       const storedMechItems = localStorage.getItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS);
-      if (storedMechItems) setConfigurableMechanicalReviewItems(JSON.parse(storedMechItems));
-      else localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(defaultInitialMechanicalReviewItems));
+      if (storedMechItems) {
+        const parsedItems = JSON.parse(storedMechItems);
+        // Simple migration: check if items have 'id' and 'category'
+        if (parsedItems.length > 0 && parsedItems[0].id && parsedItems[0].category !== undefined) {
+          setConfigurableMechanicalReviewItemsState(parsedItems);
+        } else {
+          // Old format, replace with default new format
+          setConfigurableMechanicalReviewItemsState(defaultInitialMechanicalReviewItems);
+          localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(defaultInitialMechanicalReviewItems));
+        }
+      } else {
+         setConfigurableMechanicalReviewItemsState(defaultInitialMechanicalReviewItems);
+         localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(defaultInitialMechanicalReviewItems));
+      }
 
       const storedUsvbKitsConfig = localStorage.getItem(LOCAL_STORAGE_CONFIG_USVB_KITS);
-      if (storedUsvbKitsConfig) setConfigurableUsvbKitsState(JSON.parse(storedUsvbKitsConfig)); // Use setConfigurableUsvbKitsState to avoid direct state mutation warning
+      if (storedUsvbKitsConfig) setConfigurableUsvbKitsState(JSON.parse(storedUsvbKitsConfig)); 
       else localStorage.setItem(LOCAL_STORAGE_CONFIG_USVB_KITS, JSON.stringify(generateInitialConfigurableUsvbKits()));
     }
   }, []);
@@ -553,7 +599,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         ...logEntry,
         id: `cent-log-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         timestamp: new Date().toISOString(),
-        // userId and userName would be set here if available from a real backend session
       };
       return [newLog, ...prevLogs];
     });
@@ -577,7 +622,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  // --- Configurable Ambulance Storage Locations ---
   const getAmbulanceStorageLocations = useCallback((): readonly AmbulanceStorageLocation[] => {
     return configurableAmbulanceStorageLocations;
   }, [configurableAmbulanceStorageLocations]);
@@ -608,7 +652,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setConfigurableAmbulanceStorageLocations(newLocations);
     localStorage.setItem(LOCAL_STORAGE_CONFIG_AMBULANCE_LOCATIONS, JSON.stringify(newLocations));
 
-    // Update in materials
     setConsumableMaterials(prev => prev.map(m => m.storageLocation === oldLocation ? { ...m, storageLocation: newLocation.trim() } : m));
     setNonConsumableMaterials(prev => prev.map(m => m.storageLocation === oldLocation ? { ...m, storageLocation: newLocation.trim() } : m));
     toast({ title: "Ubicación Actualizada", description: `"${oldLocation}" es ahora "${newLocation.trim()}".` });
@@ -632,46 +675,86 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [user, configurableAmbulanceStorageLocations, consumableMaterials, nonConsumableMaterials, toast]);
 
 
-  // --- Configurable Mechanical Review Items ---
-  const getConfigurableMechanicalReviewItems = useCallback((): Readonly<{ name: string }[]> => {
+  const getConfigurableMechanicalReviewItems = useCallback((): Readonly<ConfigurableMechanicalReviewItem[]> => {
     return configurableMechanicalReviewItems;
   }, [configurableMechanicalReviewItems]);
-
-  const addConfigurableMechanicalReviewItem = useCallback((item: { name: string }) => {
-    if (user?.role !== 'coordinador' || !item.name.trim() || configurableMechanicalReviewItems.some(i => i.name.toLowerCase() === item.name.trim().toLowerCase())) {
-      if (configurableMechanicalReviewItems.some(i => i.name.toLowerCase() === item.name.trim().toLowerCase())) {
-        toast({ title: "Error", description: "Este ítem de revisión ya existe.", variant: "destructive" });
-      }
+  
+  const addConfigurableMechanicalReviewItem = useCallback((item: { name: string; category: string }) => {
+    if (user?.role !== 'coordinador') {
+      toast({ title: "Acción no permitida", variant: "destructive" });
       return;
     }
-    const newItems = [...configurableMechanicalReviewItems, { name: item.name.trim() }];
-    setConfigurableMechanicalReviewItems(newItems);
+    if (!item.name.trim() || !item.category.trim()) {
+      toast({ title: "Error", description: "El nombre y la categoría del ítem son obligatorios.", variant: "destructive" });
+      return;
+    }
+    if (configurableMechanicalReviewItems.some(i => i.name.toLowerCase() === item.name.trim().toLowerCase())) {
+      toast({ title: "Error", description: "Este ítem de revisión ya existe.", variant: "destructive" });
+      return;
+    }
+    const newItem: ConfigurableMechanicalReviewItem = {
+      id: `mri-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      name: item.name.trim(),
+      category: item.category.trim(),
+    };
+    const newItems = [...configurableMechanicalReviewItems, newItem];
+    setConfigurableMechanicalReviewItemsState(newItems);
     localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(newItems));
-    toast({ title: "Ítem Añadido", description: `"${item.name.trim()}" añadido a la plantilla de revisión.` });
+    toast({ title: "Ítem Añadido", description: `"${item.name.trim()}" añadido a la plantilla de revisión en categoría "${item.category.trim()}".` });
   }, [user, configurableMechanicalReviewItems, toast]);
 
-  const updateConfigurableMechanicalReviewItem = useCallback((originalName: string, newName: string): boolean => {
-    if (user?.role !== 'coordinador' || !newName.trim() || (originalName !== newName && configurableMechanicalReviewItems.some(i => i.name.toLowerCase() === newName.trim().toLowerCase())) ) {
-      if (configurableMechanicalReviewItems.some(i => i.name.toLowerCase() === newName.trim().toLowerCase())) {
-         toast({ title: "Error", description: `El ítem de revisión "${newName.trim()}" ya existe.`, variant: "destructive" });
-      } else {
-        toast({ title: "Error", description: "El nuevo nombre del ítem no puede estar vacío.", variant: "destructive" });
-      }
+  const updateConfigurableMechanicalReviewItem = useCallback((itemId: string, updates: { name?: string; category?: string }): boolean => {
+    if (user?.role !== 'coordinador') {
+      toast({ title: "Acción no permitida", variant: "destructive" });
       return false;
     }
-    const newItems = configurableMechanicalReviewItems.map(item => item.name === originalName ? { ...item, name: newName.trim() } : item);
-    setConfigurableMechanicalReviewItems(newItems);
+    const { name, category } = updates;
+    if ((name && !name.trim()) || (category && !category.trim())) {
+       toast({ title: "Error", description: "El nombre y la categoría no pueden estar vacíos si se proporcionan.", variant: "destructive" });
+       return false;
+    }
+
+    const itemIndex = configurableMechanicalReviewItems.findIndex(i => i.id === itemId);
+    if (itemIndex === -1) {
+      toast({ title: "Error", description: "Ítem no encontrado.", variant: "destructive" });
+      return false;
+    }
+
+    if (name && configurableMechanicalReviewItems.some(i => i.id !== itemId && i.name.toLowerCase() === name.trim().toLowerCase())) {
+      toast({ title: "Error", description: `El nombre de ítem "${name.trim()}" ya existe.`, variant: "destructive" });
+      return false;
+    }
+
+    const currentItem = configurableMechanicalReviewItems[itemIndex];
+    const updatedItem = {
+      ...currentItem,
+      name: name?.trim() || currentItem.name,
+      category: category?.trim() || currentItem.category,
+    };
+
+    const newItems = [...configurableMechanicalReviewItems];
+    newItems[itemIndex] = updatedItem;
+    
+    setConfigurableMechanicalReviewItemsState(newItems);
     localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(newItems));
-    toast({ title: "Ítem Actualizado", description: `"${originalName}" es ahora "${newName.trim()}". (Esto solo afecta a nuevas revisiones)` });
+    toast({ title: "Ítem Actualizado", description: `Ítem "${updatedItem.name}" actualizado. (Esto solo afecta a nuevas revisiones)` });
     return true;
   }, [user, configurableMechanicalReviewItems, toast]);
 
-  const deleteConfigurableMechanicalReviewItem = useCallback((nameToDelete: string): boolean => {
-    if (user?.role !== 'coordinador') return false;
-    const newItems = configurableMechanicalReviewItems.filter(item => item.name !== nameToDelete);
-    setConfigurableMechanicalReviewItems(newItems);
+  const deleteConfigurableMechanicalReviewItem = useCallback((itemId: string): boolean => {
+    if (user?.role !== 'coordinador') {
+      toast({ title: "Acción no permitida", variant: "destructive" });
+      return false;
+    }
+    const itemToDelete = configurableMechanicalReviewItems.find(item => item.id === itemId);
+    if (!itemToDelete) {
+      toast({ title: "Error", description: "Ítem no encontrado para eliminar.", variant: "destructive" });
+      return false;
+    }
+    const newItems = configurableMechanicalReviewItems.filter(item => item.id !== itemId);
+    setConfigurableMechanicalReviewItemsState(newItems);
     localStorage.setItem(LOCAL_STORAGE_CONFIG_MECH_REVIEW_ITEMS, JSON.stringify(newItems));
-    toast({ title: "Ítem Eliminado", description: `"${nameToDelete}" eliminado de la plantilla de revisión. (Las revisiones existentes no cambian)` });
+    toast({ title: "Ítem Eliminado", description: `"${itemToDelete.name}" eliminado de la plantilla. (Las revisiones existentes no cambian)` });
     return true;
   }, [user, configurableMechanicalReviewItems, toast]);
 
@@ -1024,7 +1107,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const updatedAmb = {...amb};
         if (step === 'dailyCheck') {
             updatedAmb.dailyCheckCompleted = status;
-            if (!status) { // if daily check is undone, reset all subsequent steps
+            if (!status) { 
                 updatedAmb.mechanicalReviewCompleted = false;
                 updatedAmb.cleaningCompleted = false;
                 updatedAmb.inventoryCompleted = false;
@@ -1032,14 +1115,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         if (step === 'mechanical') {
             updatedAmb.mechanicalReviewCompleted = status;
-            if (!status) { // if mechanical is undone, reset cleaning and inventory
+            if (!status) { 
                 updatedAmb.cleaningCompleted = false;
                 updatedAmb.inventoryCompleted = false;
             }
         }
         if (step === 'cleaning') {
             updatedAmb.cleaningCompleted = status;
-            if (!status) { // if cleaning is undone, reset inventory
+            if (!status) { 
                 updatedAmb.inventoryCompleted = false;
             }
         }
@@ -1047,11 +1130,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             updatedAmb.inventoryCompleted = status;
             if (status) { 
                 updatedAmb.lastInventoryCheck = new Date().toISOString();
-                // Reset all steps for next cycle
                 updatedAmb.dailyCheckCompleted = false;
                 updatedAmb.mechanicalReviewCompleted = false;
                 updatedAmb.cleaningCompleted = false;
-                updatedAmb.inventoryCompleted = false; // This will be immediately set to false for the new cycle
+                updatedAmb.inventoryCompleted = false; 
             }
         }
         return updatedAmb;
@@ -1094,7 +1176,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } else {
       setRevisionesDiariasVehiculo(prev => [newCheck, ...prev]);
     }
-    // After saving, update the ambulance's daily check status and last check date
     setAllAmbulancesData(prevAmbs => prevAmbs.map(amb => 
       amb.id === checkData.ambulanceId 
         ? { ...amb, dailyCheckCompleted: true, lastDailyCheck: checkData.checkDate }
@@ -1103,7 +1184,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     updateAmbulanceWorkflowStep(checkData.ambulanceId, 'dailyCheck', true);
   };
   
-  // --- USVB Kit (Operational Data) Management ---
   const getUSVBKitById = (kitId: string): USVBKit | undefined => {
     return usvbKitsData.find(kit => kit.id === kitId);
   };
@@ -1124,7 +1204,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  // --- USVB Kit Configuration Management ---
   const getConfigurableUsvbKits = useCallback((): Readonly<USVBKit[]> => {
     return configurableUsvbKits;
   }, [configurableUsvbKits]);
@@ -1187,7 +1266,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             const existingMaterialWithNewName = kit.materials.find(m => m.id !== materialId && m.name.toLowerCase() === updates.name!.toLowerCase());
             if (existingMaterialWithNewName) {
                 nameConflict = true;
-                return kit; // Return kit unmodified to prevent update
+                return kit; 
             }
         }
         return {
@@ -1235,7 +1314,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const newKits = prevKits.map(kit => {
         if (kit.id === kitId) {
           const materialIndex = kit.materials.findIndex(m => m.id === materialId);
-          if (materialIndex === -1) return kit; // Material not found
+          if (materialIndex === -1) return kit; 
 
           const newMaterials = [...kit.materials];
           const itemToMove = newMaterials[materialIndex];
@@ -1247,13 +1326,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             newMaterials.splice(materialIndex, 1);
             newMaterials.splice(materialIndex + 1, 0, itemToMove);
           } else {
-            return kit; // Cannot move further up or down
+            return kit; 
           }
           return { ...kit, materials: newMaterials };
         }
         return kit;
       });
-      // Only save to localStorage if there was an actual change (prevents unnecessary writes if item can't move)
       const originalKit = prevKits.find(k => k.id === kitId);
       const changedKit = newKits.find(k => k.id === kitId);
       if (originalKit && changedKit && JSON.stringify(originalKit.materials) !== JSON.stringify(changedKit.materials)) {
@@ -1273,7 +1351,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
 
     accessibleAmbulances.forEach(ambulance => {
-        // Daily Check Alert
         if (!ambulance.dailyCheckCompleted) {
             newAlerts.push({
                 id: `alert-dailycheck-${ambulance.id}`,
@@ -1285,7 +1362,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             });
         }
 
-      // Mechanical Review Alert
       if (ambulance.dailyCheckCompleted && !ambulance.mechanicalReviewCompleted) {
         newAlerts.push({
           id: `alert-mr-${ambulance.id}`,
@@ -1296,7 +1372,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           createdAt: today.toISOString(),
         });
       }
-      // Cleaning Alert
        if (ambulance.dailyCheckCompleted && ambulance.mechanicalReviewCompleted && !ambulance.cleaningCompleted) {
         newAlerts.push({
           id: `alert-cl-${ambulance.id}`,
@@ -1308,12 +1383,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      // Low Stock Alerts for Ambulance Consumables
       const ambulanceConsumables = getConsumableMaterialsByAmbulanceId(ambulance.id);
       ambulanceConsumables.forEach(material => {
         if (material.minStockLevel !== undefined && material.quantity <= material.minStockLevel) {
           newAlerts.push({
-            id: `alert-lowstock-amb-cons-${material.id}`, // Unique ID for consumable low stock
+            id: `alert-lowstock-amb-cons-${material.id}`, 
             type: 'low_stock_ambulance',
             message: `Stock bajo (Consumible): ${material.name} en ${ambulance.name}. Actual: ${material.quantity}, Mín: ${material.minStockLevel}.`,
             ambulanceId: ambulance.id,
@@ -1324,19 +1398,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
       });
 
-      // Low Stock/Status Alerts for Ambulance Non-Consumables
       const ambulanceNonConsumables = getNonConsumableMaterialsByAmbulanceId(ambulance.id);
       ambulanceNonConsumables.forEach(material => {
         if (material.minStockLevel !== undefined) {
-          const currentQuantity = material.status === 'Operacional' ? 1 : 0; // Effective quantity
+          const currentQuantity = material.status === 'Operacional' ? 1 : 0; 
           if (currentQuantity < material.minStockLevel) {
              newAlerts.push({
-              id: `alert-lowstock-amb-noncons-${material.id}`, // Unique ID for non-consumable low stock/status
-              type: 'low_stock_ambulance', // Can use the same type, message will differ
+              id: `alert-lowstock-amb-noncons-${material.id}`, 
+              type: 'low_stock_ambulance', 
               message: `Alerta Equipo (No Consumible): ${material.name} en ${ambulance.name}. Estado: ${material.status}. Mín. Esperado: ${material.minStockLevel}.`,
               ambulanceId: ambulance.id,
               materialId: material.id,
-              severity: currentQuantity === 0 ? 'high' : 'medium', // High if missing/not operational, medium if somehow present but under a >1 minStockLevel
+              severity: currentQuantity === 0 ? 'high' : 'medium', 
               createdAt: today.toISOString(),
             });
           }
@@ -1421,8 +1494,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     reorderMaterialInConfigurableUsvbKit,
 
     inventoryLogs, getInventoryLogsByAmbulanceId,
-    centralInventoryLogs: centralInventoryLogsState, getCentralInventoryLogs, // exposed for API route
-    addCentralInventoryLog, // Added for direct use by API routes
+    centralInventoryLogs: centralInventoryLogsState, getCentralInventoryLogs, 
+    addCentralInventoryLog, 
     getNotificationEmailConfig, setNotificationEmailConfig,
   };
 
@@ -1440,4 +1513,3 @@ export function useAppData() {
   }
   return context;
 }
-

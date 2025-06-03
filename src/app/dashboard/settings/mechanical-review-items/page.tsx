@@ -2,16 +2,16 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; // No se usa directamente, pero FormLabel sí
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from '@/components/shared/PageHeader';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -19,11 +19,13 @@ import { useAppData } from '@/contexts/AppDataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ListChecks, PlusCircle, Edit3, Trash2, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, PlusCircle, Edit3, Trash2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import type { ConfigurableMechanicalReviewItem } from '@/types';
 
 const mechanicalItemSchema = z.object({
   name: z.string().min(3, "El nombre del ítem debe tener al menos 3 caracteres."),
+  category: z.string().min(2, "La categoría debe tener al menos 2 caracteres."),
 });
 type MechanicalItemFormValues = z.infer<typeof mechanicalItemSchema>;
 
@@ -38,13 +40,13 @@ export default function ManageMechanicalReviewItemsPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const [items, setItems] = useState<{ name: string }[]>([]);
+  const [items, setItems] = useState<Readonly<ConfigurableMechanicalReviewItem[]>>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<{ name: string } | null>(null);
+  const [editingItem, setEditingItem] = useState<ConfigurableMechanicalReviewItem | null>(null);
 
   const form = useForm<MechanicalItemFormValues>({
     resolver: zodResolver(mechanicalItemSchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", category: "" },
   });
 
   useEffect(() => {
@@ -55,31 +57,39 @@ export default function ManageMechanicalReviewItemsPage() {
       setItems(getConfigurableMechanicalReviewItems());
     }
   }, [user, authLoading, router, toast, getConfigurableMechanicalReviewItems]);
+  
+  // Effect to refresh local items state when AppDataContext changes
+  useEffect(() => {
+    if(user && !authLoading){
+        setItems(getConfigurableMechanicalReviewItems());
+    }
+  }, [getConfigurableMechanicalReviewItems, user, authLoading]);
 
-  const handleOpenDialog = (item: { name: string } | null = null) => {
+
+  const handleOpenDialog = (item: ConfigurableMechanicalReviewItem | null = null) => {
     setEditingItem(item);
-    form.reset({ name: item?.name || "" });
+    form.reset({ name: item?.name || "", category: item?.category || "" });
     setIsDialogOpen(true);
   };
 
   const onSubmit = (data: MechanicalItemFormValues) => {
     if (editingItem) {
-      const success = updateConfigurableMechanicalReviewItem(editingItem.name, data.name);
+      const success = updateConfigurableMechanicalReviewItem(editingItem.id, data);
       if (success) {
-        setItems(getConfigurableMechanicalReviewItems()); // Refresh list
+        setItems(getConfigurableMechanicalReviewItems()); 
         setIsDialogOpen(false);
       }
     } else {
       addConfigurableMechanicalReviewItem(data);
-      setItems(getConfigurableMechanicalReviewItems()); // Refresh list
+      setItems(getConfigurableMechanicalReviewItems()); 
       setIsDialogOpen(false);
     }
   };
 
-  const handleDelete = (itemName: string) => {
-    const success = deleteConfigurableMechanicalReviewItem(itemName);
+  const handleDelete = (itemId: string) => {
+    const success = deleteConfigurableMechanicalReviewItem(itemId);
     if (success) {
-      setItems(getConfigurableMechanicalReviewItems()); // Refresh list
+      setItems(getConfigurableMechanicalReviewItems()); 
     }
   };
   
@@ -100,7 +110,7 @@ export default function ManageMechanicalReviewItemsPage() {
     <div>
       <PageHeader
         title="Gestionar Ítems de Plantilla para Revisión Mecánica"
-        description="Añade, edita o elimina los ítems que aparecerán por defecto en las nuevas revisiones mecánicas."
+        description="Añade, edita o elimina los ítems y sus categorías que aparecerán por defecto en las nuevas revisiones mecánicas."
         action={
           <Button variant="outline" size="sm" asChild>
             <Link href="/dashboard/settings">
@@ -128,13 +138,15 @@ export default function ManageMechanicalReviewItemsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nombre del Ítem</TableHead>
+                    <TableHead>Categoría</TableHead>
                     <TableHead className="text-right w-[120px]">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((item, index) => (
-                    <TableRow key={`${item.name}-${index}`}>
+                  {items.map((item) => (
+                    <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{item.category}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(item)} className="mr-1">
                           <Edit3 className="h-4 w-4" /> <span className="sr-only">Editar</span>
@@ -149,13 +161,13 @@ export default function ManageMechanicalReviewItemsPage() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>¿Confirmar Eliminación?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                ¿Estás seguro de que quieres eliminar el ítem de revisión "{item.name}" de la plantilla? 
+                                ¿Estás seguro de que quieres eliminar el ítem de revisión "{item.name}" (Categoría: {item.category}) de la plantilla? 
                                 Esto no afectará a las revisiones ya guardadas.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(item.name)}>Eliminar</AlertDialogAction>
+                              <AlertDialogAction onClick={() => handleDelete(item.id)}>Eliminar</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -174,7 +186,7 @@ export default function ManageMechanicalReviewItemsPage() {
           <DialogHeader>
             <DialogTitle>{editingItem ? "Editar Ítem de Revisión" : "Añadir Nuevo Ítem de Revisión"}</DialogTitle>
             <DialogDescription>
-              {editingItem ? "Modifica el nombre del ítem de la plantilla." : "Introduce el nombre para el nuevo ítem de la plantilla."}
+              {editingItem ? "Modifica el nombre y la categoría del ítem de la plantilla." : "Introduce el nombre y la categoría para el nuevo ítem de la plantilla."}
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -188,6 +200,20 @@ export default function ManageMechanicalReviewItemsPage() {
                     <FormControl>
                       <Input placeholder="Ej: Nivel de aceite motor" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoría del Ítem</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: Motor y Niveles" {...field} />
+                    </FormControl>
+                     <FormDescription>Agrupa ítems similares bajo una misma categoría (ej. Frenos, Luces).</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

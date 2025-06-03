@@ -21,15 +21,18 @@ export interface Ambulance {
   lastKnownKilometers?: number;
   lastCheckInByUserId?: string; // ID of user who last checked in
   lastCheckInDate?: string; // Date ISO string of last check-in
+  dailyCheckCompleted?: boolean; // Added for daily check status
+  lastDailyCheck?: string; // Added for last daily check date
 }
 
 export type ChecklistItemStatus = 'OK' | 'Reparar' | 'N/A';
 
 export interface ChecklistItem {
-  id: string;
+  id: string; // Unique ID for the checklist item instance
   name: string;
   status: ChecklistItemStatus;
   notes?: string;
+  category?: string; // Category for grouping
 }
 
 export interface MechanicalReview {
@@ -69,6 +72,7 @@ export interface NonConsumableMaterial {
   status: NonConsumableMaterialStatus;
   ambulanceId: string;
   storageLocation?: string;
+  minStockLevel?: number; // Added for low stock alerts, though it's unusual for non-consumables unless it represents "minimum 1 unit must be operational"
 }
 
 export type MaterialRoute = "IV/IM" | "Nebulizador" | "Oral";
@@ -100,8 +104,8 @@ export type AlertType =
   'ampulario_expired_material' | 
   'cleaning_pending' | 
   'daily_check_pending' |
-  'low_stock_ambulance' | // New alert type
-  'low_stock_central';   // New alert type
+  'low_stock_ambulance' | 
+  'low_stock_central';   
 
 export interface Alert {
   id: string;
@@ -119,7 +123,7 @@ export interface WorkflowStep {
   path: string;
   icon: React.ElementType;
   isCompleted: (ambulance: Ambulance) => boolean;
-  key: string; // Added key for easier mapping to Ambulance properties
+  key: string; 
   isNextStep?: boolean;
 }
 
@@ -132,7 +136,8 @@ export type YesNoStatus = 'Sí' | 'No';
 
 export interface ExteriorCornerCheck {
   notes?: string;
-  photoTaken?: boolean; // Placeholder for actual photo
+  photoTaken?: boolean; 
+  photoUrl?: string; // Added to store the actual photo Data URL or a placeholder URL
 }
 
 export interface RevisionDiariaVehiculo {
@@ -169,21 +174,20 @@ export type AmbulanceStorageLocation = string;
 export type USVBKitMaterialStatus = 'ok' | 'low' | 'out';
 
 export interface USVBKitMaterial {
-  id: string; // Identificador único del material DENTRO de un kit específico
+  id: string; 
   name: string;
-  quantity: number; // Cantidad actual en el kit
-  targetQuantity: number; // Cantidad ideal según la plantilla
-  status?: USVBKitMaterialStatus; // Calculado: ok, bajo, agotado
+  quantity: number; 
+  targetQuantity: number; 
+  status?: USVBKitMaterialStatus; 
 }
 
 export interface USVBKit {
-  id: string; // ej. "usvb-kit-01"
-  number: number; // ej. 1 a 30
-  name: string; // ej. "Espacio 4: EPI"
-  iconName: string; // Nombre del icono de lucide-react, ej. "Shield"
-  genericImageHint?: string; // Para data-ai-hint, ej. "medical kit"
-  materials: USVBKitMaterial[]; // Representa el estado ACTUAL del kit (con quantity actual)
-                                 // La targetQuantity se consultará de la configuración.
+  id: string; 
+  number: number; 
+  name: string; 
+  iconName: string; 
+  genericImageHint?: string; 
+  materials: USVBKitMaterial[];                                
 }
 
 
@@ -197,7 +201,7 @@ export interface InventoryLogEntry {
   materialName: string;
   materialType: 'consumable' | 'non-consumable';
   action: InventoryLogAction;
-  changeDetails: string; // "Quantity: 5 -> 3", "Status: OK -> Repair"
+  changeDetails: string; 
   quantityBefore?: number;
   quantityAfter?: number;
   statusBefore?: string;
@@ -205,4 +209,26 @@ export interface InventoryLogEntry {
   userId: string;
   userName: string;
   timestamp: string; // ISO Date string
+}
+
+export interface CentralInventoryLogEntry {
+  id: string;
+  materialId: string;
+  materialName: string;
+  action: InventoryLogAction;
+  spaceId: string;
+  spaceName: string;
+  changeDetails: string;
+  quantityBefore?: number;
+  quantityAfter?: number;
+  userId?: string; 
+  userName?: string; 
+  timestamp: string; // ISO Date string
+}
+
+// Item configurable para la plantilla de revisión mecánica
+export interface ConfigurableMechanicalReviewItem {
+  id: string;
+  name: string;
+  category: string;
 }
